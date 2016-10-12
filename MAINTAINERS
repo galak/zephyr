@@ -354,7 +354,7 @@ F:	samples/net/zoap_server/
 F:	tests/net/zoap/
 
 THE REST
-M:	Anas Nashif <anas.nashif@intel.com>
+M:	Anas Nashif <anas.nashif@intel.com>, Kumar
 L:	devel@lists.zephyrproject.com
 T:	git https://gerrit.zephyrproject.org/r/a/zephyr
 S:	Buried alive in reporters
