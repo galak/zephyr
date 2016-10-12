@@ -1,9 +1,10 @@
 language: c
 
 install:
-        wget https://nexus.zephyrproject.org/content/repositories/releases/org/zephyrproject/zephyr-sdk/0.8.2-i686/zephyr-sdk-0.8.2-i686-setup.run
+        - wget https://nexus.zephyrproject.org/content/repositories/releases/org/zephyrproject/zephyr-sdk/0.8.2-i686/zephyr-sdk-0.8.2-i686-setup.run
 
 script:
-        pwd
-        ls
+        - pwd
+        - ls
+        - source zephyr-env.sh
 
