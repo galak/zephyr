@@ -1,6 +1,9 @@
 language: c
 
 install:
+        - echo "Number of CPUS"
+        - python -c 'import multiprocessing; print multiprocessing.cpu_count()'
+
         - wget https://nexus.zephyrproject.org/content/repositories/releases/org/zephyrproject/zephyr-sdk/0.8.2-i686/zephyr-sdk-0.8.2-i686-setup.run -O /tmp/zephyr-sdk.run
         - chmod a+x /tmp/zephyr-sdk.run
         - sudo /tmp/zephyr-sdk.run -- -d /opt/zephyr-sdk/
