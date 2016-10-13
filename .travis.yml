@@ -20,4 +20,4 @@ script:
         - export ZEPHYR_GCC_VARIANT=zephyr
         - export ZEPHYR_SDK_INSTALL_DIR=/opt/zephyr-sdk
         - source zephyr-env.sh
-        - ./scripts/sanitycheck -v -v -L2
+        - ./scripts/sanitycheck -v -v -i -L2
