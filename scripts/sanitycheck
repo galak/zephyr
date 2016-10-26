@@ -30,7 +30,7 @@ Each testcase.ini block can define the following key/value pairs:
     run under certain circumstances, like daily builds. These test cases
     are still compiled.
 
-  kernel = <nano|micro>
+  kernel = <nano|micro|unified>
     Specify the kernel being tested instead of relying on parsing
     Makefile for KERNEL_TYPE
 
@@ -149,6 +149,10 @@ can help show why particular test cases were skipped.
 Metrics (such as pass/fail state and binary size) for the last code
 release are stored in scripts/sanity_chk/sanity_last_release.csv.
 To update this, pass the --all --release options.
+
+To load arguments from a file, write '+' before the file name, e.g.,
++file_name. File content must be one or more valid arguments separated by
+line break instead of white spaces.
 
 Most everyday users will run with no arguments.
 """
@@ -1036,7 +1040,7 @@ class Platform:
         if plat_dict["supported_toolchains"]:
             self.supported_toolchains = plat_dict["supported_toolchains"]
         # Gets populated in a separate step
-        self.defconfig = {"micro" : None, "nano" : None}
+        self.defconfig = {"micro" : None, "nano" : None, "unified" : None}
         pass
 
     def set_defconfig(self, ktype, defconfig):
@@ -1045,7 +1049,7 @@ class Platform:
         We do this in another step because all the defconfigs are generated
         at once from a sub-make, see TestSuite constructor
 
-        @param ktype Kernel type, either "micro" or "nano"
+        @param ktype Kernel type, either "micro" or "nano" or "unified"
         @param defconfig Dictionary containing defconfig information
         """
         self.defconfig[ktype] = defconfig
@@ -1055,7 +1059,7 @@ class Platform:
         in the kernel defconfig used for this arch/platform. Used to identify
         platform features.
 
-        @param ktype Kernel type, either "micro" or "nano"
+        @param ktype Kernel type, either "micro" or "nano" or "unified"
         @return dictionary corresponding to the defconfig contents. unset
             values will not be defined
         """
@@ -1098,7 +1102,7 @@ class Architecture:
 class TestCase:
     """Class representing a test application
     """
-    makefile_re = re.compile("\s*KERNEL_TYPE\s*[?=]+\s*(micro|nano)\s*")
+    makefile_re = re.compile("\s*KERNEL_TYPE\s*[?=]+\s*(micro|nano|unified)\s*")
 
     def __init__(self, testcase_root, workdir, name, tc_dict, inifile):
         """TestCase constructor.
@@ -1289,7 +1293,7 @@ class TestSuite:
                 result.append((test, platform))
         return result
 
-    def apply_filters(self, platform_filter, arch_filter, tag_filter,
+    def apply_filters(self, platform_filter, arch_filter, tag_filter, exclude_tag,
                       config_filter, testcase_filter, last_failed, all_plats,
                       platform_limit, toolchain, extra_args):
         instances = []
@@ -1297,6 +1301,7 @@ class TestSuite:
         verbose("platform filter: " + str(platform_filter))
         verbose("    arch_filter: " + str(arch_filter))
         verbose("     tag_filter: " + str(tag_filter))
+        verbose("    exclude_tag: " + str(exclude_tag))
         verbose("  config_filter: " + str(config_filter))
 
         if last_failed:
@@ -1327,6 +1332,9 @@ class TestSuite:
                         continue
 
                     if tag_filter and not tc.tags.intersection(tag_filter):
+                        continue
+
+                    if exclude_tag and tc.tags.intersection(exclude_tag):
                         continue
 
                     if testcase_filter and tc_name not in testcase_filter:
@@ -1407,6 +1415,10 @@ class TestSuite:
 
                     if tag_filter and not tc.tags.intersection(tag_filter):
                         discards[instance] = "Command line testcase tag filter"
+                        continue
+
+                    if exclude_tag and tc.tags.intersection(exclude_tag):
+                        discards[instance] = "Command line testcase exclude filter"
                         continue
 
                     if testcase_filter and tc_name not in testcase_filter:
@@ -1599,6 +1611,7 @@ def parse_arguments():
 
     parser = argparse.ArgumentParser(description = __doc__,
                                      formatter_class = argparse.RawDescriptionHelpFormatter)
+    parser.fromfile_prefix_chars = "+"
 
     parser.add_argument("-p", "--platform", action="append",
             help="Platform filter for testing. This option may be used multiple "
@@ -1621,6 +1634,9 @@ def parse_arguments():
             help="Specify tags to restrict which tests to run by tag value. "
                  "Default is to not do any tag filtering. Multiple invocations "
                  "are treated as a logical 'or' relationship")
+    parser.add_argument("-e", "--exclude-tag", action="append",
+            help="Specify tags of tests that should not run."
+                 "Default is to run all tests with all tags.")
     parser.add_argument("-f", "--only-failed", action="store_true",
             help="Run only those tests that failed the previous sanity check "
                  "invocation.")
@@ -1830,7 +1846,7 @@ def main():
                               os.path.join(ZEPHYR_BASE, "samples")]
 
     ts = TestSuite(args.arch_root, args.testcase_root, args.outdir, args.coverage)
-    discards = ts.apply_filters(args.platform, args.arch, args.tag, args.config,
+    discards = ts.apply_filters(args.platform, args.arch, args.tag, args.exclude_tag, args.config,
                                 args.test, args.only_failed, args.all,
                                 args.platform_limit, toolchain, args.extra_args)
 
