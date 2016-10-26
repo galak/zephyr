@@ -1,4 +1,4 @@
 [gerrit]
-host=gerrit.zephyrproject.org
+host=review.gerrithub.io
 port=29418
-project=zephyr.git
+project=galak/zephyr.git
