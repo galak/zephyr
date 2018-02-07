@@ -4,4 +4,3 @@
 #
 
 add_subdirectory_ifdef(CONFIG_OPENAMP open-amp)
-
