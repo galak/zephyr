@@ -14,9 +14,5 @@ if(NOT ("${BOARD}" STREQUAL "lpcxpresso54114_m0"))
   message(FATAL_ERROR "${BOARD} was specified, but this sample only supports lpcxpresso54114_m0")
 endif()
 
-target_sources(app PRIVATE src/main_remote.c
-	       ${PLATFORM_DIR}/platform.c
-	       ${PLATFORM_DIR}/resource_table.c
-	       ${PLATFORM_DIR}/platform_ops.c)
-
+target_sources(app PRIVATE src/main_remote.c)
 target_include_directories(app PRIVATE ${PLATFORM_DIR})
