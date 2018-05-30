@@ -1,0 +1,14 @@
+#
+# Copyright (c) 2018 Linaro Limited
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+config BOARD_MUSCA_A
+	bool "ARM Cortex-M33 SMM on V2M-MUSCA"
+	depends on SOC_SERIES_MUSCA
+
+config BOARD_MUSCA_A_NONSECURE
+	bool "ARM Cortex-M33 SMM on V2M-MUSCA (Non-Secure)"
+	depends on SOC_SERIES_MUSCA
+	select ARM_NONSECURE_FIRMWARE
