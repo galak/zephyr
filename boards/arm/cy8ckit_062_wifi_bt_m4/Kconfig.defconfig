@@ -1,0 +1,16 @@
+# Kconfig - PSoC6 WiFi-BT Pioneer Kit configuration
+#
+# Copyright (c) 2018 Cypress
+# SPDX-License-Identifier: Apache-2.0
+#
+
+if 1 # BOARD_CY8CKIT_062_WIFI_BT_M4
+
+config BOARD
+	default "cy8ckit_062_wifi_bt_m4"
+
+if GPIO
+
+endif # GPIO
+
+endif # BOARD_CY8CKIT_062_WIFI_BT_M4
