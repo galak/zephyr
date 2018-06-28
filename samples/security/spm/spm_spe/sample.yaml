@@ -1,0 +1,18 @@
+sample:
+  description: SPM example for PSoC6 CM0p
+    application
+  name: spm_psoc6
+  platforms: all
+common:
+    tags: samples
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "SPM PSoC6 (.*)"
+tests:
+  singlethread:
+    extra_args: CONF_FILE=prj.conf
+    filter: not CONFIG_BT and not CONFIG_GPIO_SCH and ASSERT == 0
+  test:
+    tags: samples
