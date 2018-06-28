@@ -1,0 +1,28 @@
+#include <arm/armv7-m.dtsi>
+#include <cypress/psoc6.dtsi>
+
+/ {
+	cpus {
+		/delete-node/ cpu@0;
+
+		cpu@1 {
+			compatible = "arm,cortex-m4f";
+		};
+	};
+
+	soc {
+		uart5: uart@40001000 {
+			compatible = "cypress,nrf-uart";
+			reg = <0x40001000 0x1000>;
+			interrupts = <2 1>;
+			status = "disabled";
+			label = "uart_port5";
+		};
+
+		/delete-node/ uart12;
+	};
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <3>;
+};

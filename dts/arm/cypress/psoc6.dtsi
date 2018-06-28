@@ -1,0 +1,83 @@
+#include <cypress/mem.h>
+
+/ {
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-m0+";
+			reg = <0>;
+		};
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-m4f";
+			reg = <1>;
+		};
+	};
+
+	flash-controller@4001E000 {
+			compatible = "nrf,nrf51-flash-controller";
+			reg = <0x4001E000 0x518>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			label="NRF_FLASH_DRV_NAME";
+
+			flash0: flash@10000000 {
+				compatible = "soc-nv-flash";
+				label = "NRF_FLASH";
+				reg = <0x10000000 DT_FLASH_M0P_SIZE>;
+				write-block-size = <4>;
+			};
+
+			flash1: flash@10060000 {
+				compatible = "soc-nv-flash";
+				label = "NRF_FLASH";
+				reg = <0x10060000 DT_FLASH_M4_SIZE>;
+				write-block-size = <4>;
+			};
+	};
+
+	sram0: memory@8000000 {
+		device_type = "memory";
+		compatible = "mmio-sram";
+		reg = <0x08000000 DT_SRAM_M0P_SIZE>;
+	};
+
+	sram1: memory@08023000 {
+		device_type = "memory";
+		compatible = "mmio-sram";
+		reg = <0x08023000 DT_SRAM_SHAR_SIZE>;
+	};
+
+	sram2: memory@08024000 {
+		device_type = "memory";
+		compatible = "mmio-sram";
+		reg = <0x08024000 DT_SRAM_M4_SIZE>;
+	};
+
+	soc {
+		uart5: uart@40001000 {
+			compatible = "cypress,nrf-uart";
+			reg = <0x40001000 0x1000>;
+			interrupts = <2 1>;
+			status = "disabled";
+			label = "UART_5";
+		};
+
+		uart12: uart@40002000 {
+			compatible = "cypress,nrf-uart";
+			reg = <0x40002000 0x1000>;
+			interrupts = <2 1>;
+			status = "disabled";
+			label = "UART_12";
+		};
+	};
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <2>;
+};

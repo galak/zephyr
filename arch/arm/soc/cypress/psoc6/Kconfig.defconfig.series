@@ -1,0 +1,42 @@
+# Kconfig.defconfig.series - Cypress Semiconductor PSoC6 series configuration options
+#
+# Copyright (c) 2018, Cypress
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+if SOC_SERIES_PSOC62
+
+config SOC_SERIES
+	default "psoc6"
+
+config NUM_IRQS
+	int
+	# must be >= the highest interrupt number used
+	default 40
+
+	config SYS_CLOCK_HW_CYCLES_PER_SEC
+	int
+	default 50000000
+
+if UART_PSOC6
+
+if SOC_PSOC6_M0
+
+config UART_PSOC6_PORT_12
+	def_bool y
+
+endif # SOC_PSOC6_M0
+
+if SOC_PSOC6_M4
+
+config UART_PSOC6_PORT_5
+	def_bool y
+
+endif # SOC_PSOC6_M4
+
+endif # UART_PSOC6
+
+gsource "arch/arm/soc/cypress/psoc6/Kconfig.defconfig.psoc*"
+
+endif # SOC_SERIES_PSOC62
