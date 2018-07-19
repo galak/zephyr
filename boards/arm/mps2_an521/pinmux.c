@@ -117,6 +117,7 @@
  */
 static void arm_mps2_pinmux_defaults(void)
 {
+#if 0
 	u32_t gpio_0 = 0;
 	u32_t gpio_1 = 0;
 	u32_t gpio_2 = 0;
@@ -153,6 +154,7 @@ static void arm_mps2_pinmux_defaults(void)
 	       | (1<<12); /* Shield 1 SPI 4 SCK */
 
 	CMSDK_AHB_GPIO2_DEV->altfuncset = gpio_2;
+#endif
 }
 
 static int arm_mps2_pinmux_init(struct device *port)
