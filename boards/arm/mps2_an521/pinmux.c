@@ -185,7 +185,6 @@ struct arm_scc_reg_map_t {
 
 static void arm_mps2_pinmux_defaults(void)
 {
-	printk("in pinmux defaults\n");
 #if 0
 	u32_t gpio_0 = 0;
 	u32_t gpio_1 = 0;
@@ -224,6 +223,22 @@ static void arm_mps2_pinmux_defaults(void)
 
 	CMSDK_AHB_GPIO2_DEV->altfuncset = gpio_2;
 #endif
+
+#if 1
+	/* Enable GPIO0/1 for UART 0 */
+	MUSCA_SCC_DEV->iomux_main_insel = 0xfffffffc;
+	MUSCA_SCC_DEV->iomux_main_outse = 0xfffffffc;
+	MUSCA_SCC_DEV->iomux_main_oense = 0xfffffffc;
+#endif
+}
+
+void kumar(void)
+{
+	printk("in kumar\n");
+	printk("MUSCA_SCC_DEV %p\n", &(MUSCA_SCC_DEV->iomux_main_insel));
+	printk("MUSCA_SCC_DEV->iomux_main_insel %x\n", MUSCA_SCC_DEV->iomux_main_insel);
+	printk("MUSCA_SCC_DEV->iomux_main_outse %x\n", MUSCA_SCC_DEV->iomux_main_outse);
+	printk("MUSCA_SCC_DEV->iomux_main_oense %x\n", MUSCA_SCC_DEV->iomux_main_oense);
 }
 
 static int arm_mps2_pinmux_init(struct device *port)
