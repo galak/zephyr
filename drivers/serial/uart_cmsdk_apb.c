@@ -20,17 +20,17 @@
 #include <linker/sections.h>
 
 /* UART Registers */
-#define UART_DR		(0x00+0x50102000)
-#define UART_RSR	(0x04+0x50102000)
-#define UART_ECR	(0x04+0x50102000)
-#define UART_FR		(0x18+0x50102000)
-#define UART_IBRD	(0x24+0x50102000)
-#define UART_FBRD	(0x28+0x50102000)
-#define UART_LCRH	(0x2c+0x50102000)
-#define UART_CR		(0x30+0x50102000)
-#define UART_IMSC	(0x38+0x50102000)
-#define UART_MIS	(0x40+0x50102000)
-#define UART_ICR	(0x44+0x50102000)
+#define UART_DR		(0x00+0x50101000)
+#define UART_RSR	(0x04+0x50101000)
+#define UART_ECR	(0x04+0x50101000)
+#define UART_FR		(0x18+0x50101000)
+#define UART_IBRD	(0x24+0x50101000)
+#define UART_FBRD	(0x28+0x50101000)
+#define UART_LCRH	(0x2c+0x50101000)
+#define UART_CR		(0x30+0x50101000)
+#define UART_IMSC	(0x38+0x50101000)
+#define UART_MIS	(0x40+0x50101000)
+#define UART_ICR	(0x44+0x50101000)
 
 /* Flag register */
 #define FR_RXFE		0x10	/* Receive FIFO empty */
