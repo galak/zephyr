@@ -7,7 +7,10 @@
 #include <zephyr.h>
 #include <misc/printk.h>
 
+extern void kumar();
+
 void main(void)
 {
 	printk("Hello World! %s\n", CONFIG_ARCH);
+	kumar();
 }
