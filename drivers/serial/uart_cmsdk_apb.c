@@ -542,15 +542,15 @@ static int uart_cmsdk_apb_poll_in(struct device *dev, unsigned char *c)
 static unsigned char uart_cmsdk_apb_poll_out(struct device *dev,
 					     unsigned char c)
 {
-	volatile struct uart_cmsdk_apb *uart = UART_STRUCT(dev);
+	volatile struct _uart_pl011_reg_map_t *uart = UART_STRUCT(dev);
 
-	/* Wait for transmitter to be ready */
-	while (uart->state & UART_TX_BF) {
+	while(!_uart_pl011_is_writable(uart))
+	{
 		; /* Wait */
 	}
 
 	/* Send a character */
-	uart->data = (u32_t)c;
+	uart->uartdr = c;
 	return c;
 }
 
