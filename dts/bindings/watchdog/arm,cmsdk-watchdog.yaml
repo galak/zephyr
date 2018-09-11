@@ -1,6 +1,6 @@
 ---
 title: ARM CMSDK WATCHDOG
-id: arm,cmsdk-watchdog
+type: watchdog
 version: 0.1
 
 description: >

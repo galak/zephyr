@@ -1,6 +1,6 @@
 ---
 title: STM32 PWM
-id: st,stm32-pwm
+type: pwm
 version: 0.1
 
 description: >

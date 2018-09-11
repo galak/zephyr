@@ -1,6 +1,6 @@
 ---
 title: Flash Partitions
-id: fixed-partition
+type: mtd
 version: 0.1
 
 description: >

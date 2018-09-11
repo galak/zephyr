@@ -5,7 +5,7 @@
 #
 ---
 title: Nordic Control Interface for ARM TrustZone CryptoCell 310
-id: nordic,nrf-cc310
+type: crypto
 version: 0.1
 
 description: >

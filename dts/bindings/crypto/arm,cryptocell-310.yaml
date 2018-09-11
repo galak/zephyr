@@ -5,7 +5,7 @@
 #
 ---
 title: ARM TrustZone CryptoCell 310
-id: arm,cryptocell-310
+type: crypto
 version: 0.1
 
 description: >

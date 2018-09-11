@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 title: Intel E1000 Ethernet controller
-id: intel,e1000
+type: net_l2_ethernet
 version: 0.1
 
 description: >
