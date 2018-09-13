@@ -39,9 +39,24 @@ class DTHeuristics(DTDirective):
         if not isinstance(compatible, list):
             compatible = [compatible]
 
-        # Check for <device>-device that is connected to a bus
         for compat in compatible:
-            for device_type in yaml[compat].get('type', []):
+
+            # get device type list
+            try:
+                device_types = yaml[compat]['type']
+            except KeyError:
+                raise Exception("Device Node: {} has no 'type'".format(node_address))
+
+            if not isinstance(device_types, list):
+                device_types = [device_types, ]
+
+            # inject device type in database
+            for j, device_type in enumerate(device_types):
+                edts_insert_device_type(compat, device_type)
+                edts_insert_device_property(node_address, 'device-type/{}'.format(j),
+                                device_type)
+
+                # Perform device type specific treatment
                 if not device_type.endswith('-device'):
                     continue
 
