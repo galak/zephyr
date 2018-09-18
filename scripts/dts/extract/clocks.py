@@ -55,6 +55,10 @@ class DTClocks(DTDirective):
                 clock_cell_name = clock_cells_names[i].lower()
             edts_insert_device_property(clock_consumer_device_id,
                 property_path_templ.format(clock_cell_name), cell)
+            if 'bus' in clock_cell_name or 'name' in clock_cell_name:
+                edts_insert_device_controller(clock_provider_node_address,
+                                              clock_consumer_node_address,
+                                              cell)
 
 
     def _extract_consumer(self, node_address, yaml, clocks, def_label):

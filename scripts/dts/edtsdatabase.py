@@ -76,6 +76,20 @@ class EDTSProviderMixin(object):
             self._edts['device-types'][device_type].append(compatible)
             self._edts['device-types'][device_type].sort()
 
+    def insert_device_controller(self, controller_type, controller, device_id, line):
+        if controller_type not in self._edts['controllers']:
+            self._edts['controllers'][controller_type] = dict()
+        if controller not in self._edts['controllers'][controller_type]:
+            self._edts['controllers'][controller_type][controller] = dict()
+        if line not in self._edts['controllers'][controller_type][controller]:
+            self._edts['controllers'][controller_type][controller]\
+                                                                [line] = list()
+        if device_id not in self._edts['controllers'][controller_type]\
+                                                            [controller][line]:
+            self._edts['controllers'][controller_type][controller]\
+                                                        [line].append(device_id)
+            self._edts['controllers'][controller_type][controller]\
+                                                                [line].sort()
 
     ##
     # @brief Insert property value for the device of the given device id.
@@ -154,7 +168,7 @@ class EDTSDatabase(EDTSConsumerMixin, EDTSProviderMixin, Mapping):
     def __init__(self, *args, **kw):
         self._edts = dict(*args, **kw)
         # setup basic database schema
-        for edts_key in ('devices', 'compatibles', 'device-types'):
+        for edts_key in ('devices', 'compatibles', 'device-types', 'controllers'):
             if not edts_key in self._edts:
                 self._edts[edts_key] = dict()
 
