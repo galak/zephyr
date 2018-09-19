@@ -35,6 +35,13 @@ class DTHeuristics(DTDirective):
     #                  compatible definition.
     #
     def extract(self, node_address, yaml, prop, def_label):
+
+        # Check aliases
+        if node_address in aliases:
+            for i , alias in enumerate(aliases[node_address]):
+                edts_insert_device_property(node_address, 'alias/{}'.format(i), alias)
+
+        # Process compatible related work
         compatible = reduced[node_address]['props']['compatible']
         if not isinstance(compatible, list):
             compatible = [compatible]
