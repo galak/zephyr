@@ -6,8 +6,6 @@
 
 from extract.globals import *
 from extract.edts import *
-from extract.directive import DTDirective
-from extract.default import default
 
 ##
 # @brief Generate device tree information based on heuristics.
@@ -15,7 +13,7 @@ from extract.default import default
 # Generates in EDTS:
 # - bus/master : device id of bus master for a bus device
 # - parent-device : device id of parent device
-class DTHeuristics(DTDirective):
+class DTHeuristics(object):
 
     def __init__(self):
         pass
@@ -30,11 +28,8 @@ class DTHeuristics(DTDirective):
     # @param node_address Address of node owning the
     #                     compatible definition.
     # @param yaml YAML definition for the owning node.
-    # @param prop compatible property name
-    # @param def_label Define label string of node owning the
-    #                  compatible definition.
     #
-    def extract(self, node_address, yaml, prop, def_label):
+    def extract(self, node_address, yaml):
 
         # Check aliases
         if node_address in aliases:
@@ -42,12 +37,16 @@ class DTHeuristics(DTDirective):
                 edts_insert_device_property(node_address, 'alias/{}'.format(i), alias)
 
         # Process compatible related work
-        compatible = reduced[node_address]['props']['compatible']
+        try:
+            compatible = reduced[node_address]['props']['compatible']
+        except KeyError:
+            # No compat skip next part
+            return
+
         if not isinstance(compatible, list):
             compatible = [compatible]
 
         for compat in compatible:
-
             # get device type list
             try:
                 device_types = yaml[compat]['type']

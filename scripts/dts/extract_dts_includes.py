@@ -242,9 +242,6 @@ def extract_property(node_compat, yaml, node_address, prop, prop_val, names,
         interrupts.extract(node_address, yaml, prop, names, def_label)
     elif prop == 'compatible':
         compatible.extract(node_address, yaml, prop, def_label)
-        # do extra property definition based on heuristics
-        # do it here as the compatible property is mandatory
-        heuristics.extract(node_address, yaml, prop, def_label)
     elif 'pinctrl-' in prop:
         pinctrl.extract(node_address, yaml, prop, def_label)
     elif 'clocks' in prop:
@@ -275,6 +272,10 @@ def extract_node_include_info(reduced, root_node_address, sub_node_address,
             label_override = convert_string_to_label(node['props']['label'])
         except KeyError:
             pass
+
+
+    # do extra property definition based on heuristics
+    heuristics.extract(sub_node_address, yaml)
 
     # check to see if we need to process the properties
     for k, v in y_node['properties'].items():
