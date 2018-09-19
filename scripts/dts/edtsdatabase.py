@@ -68,6 +68,8 @@ class EDTSProviderMixin(object):
                                      ))
                 property_access_point[keys[i]] = property_value
 
+    def insert_chosen(self, chosen, device_id):
+        self._edts['chosen'][chosen] = device_id
 
     def _inject_cell(self, keys, property_access_point, property_value):
 
@@ -197,7 +199,8 @@ class EDTSProviderMixin(object):
 # Database schema:
 #
 # _edts dict(
-#    'aliases': dict(alias) : sorted list(device-id)),
+#   'aliases': dict(alias) : sorted list(device-id)),
+#   'chosen': dict(chosen),
 #   'devices':  dict(device-id :  device-struct),
 #   'compatibles':  dict(compatible : sorted list(device-id)),
 #   'device-types': dict(device-type : sorted list(compatible)),
@@ -223,7 +226,7 @@ class EDTSDatabase(EDTSConsumerMixin, EDTSProviderMixin, Mapping):
         self._edts = dict(*args, **kw)
         # setup basic database schema
         for edts_key in ('devices', 'compatibles', 'device-types', \
-                          'controllers', 'aliases'):
+                          'controllers', 'aliases', 'chosen'):
             if not edts_key in self._edts:
                 self._edts[edts_key] = dict()
 
