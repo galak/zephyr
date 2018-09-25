@@ -25,10 +25,15 @@ class DTDefault(DTDirective):
     # @param def_label Define label string of node owning the directive.
     #
     def extract(self, node_address, yaml, prop, def_label):
+
         prop_values = reduced[node_address]['props'][prop]
 
         # generate EDTS
         edts_insert_device_property(node_address, prop, prop_values)
+
+        if def_label is None:
+            # No #define generation to be done, exit now
+            return
 
         # generate defines
         prop_def = {}
