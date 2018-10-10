@@ -5,7 +5,7 @@
 #
 ---
 title: ARM Serial Configuration Control
-id: arm,scc
+type: arm,scc
 version: 0.1
 
 description: >
