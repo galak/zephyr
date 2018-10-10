@@ -19,9 +19,162 @@ import pprint
 class EDTSConsumerMixin(object):
     __slots__ = []
 
+    ##
+    # @brief Get compatibles
+    #
+    # @param None
+    # @return edts 'compatibles' dict
+    def get_compatibles(self):
+        return self._edts['compatibles']
 
-    ## Empty for now
+    ##
+    # @brief Get aliases
+    #
+    # @param None
+    # @return edts 'aliases' dict
+    def get_aliases(self):
+        return self._edts['aliases']
 
+    ##
+    # @brief Get chosen
+    #
+    # @param None
+    # @return edts 'chosen' dict
+    def get_chosen(self):
+        return self._edts['chosen']
+
+    ##
+    # @brief Get device types
+    #
+    # @param None
+    # @return edts device types dict
+    def get_device_types(self):
+        return self._edts['device-types']
+
+    ##
+    # @brief Get controllers
+    #
+    # @param  None
+    # @return compatible generic device type
+    def get_controllers(self):
+        return self._edts['controllers']
+
+    ##
+    # @brief Get device type for a compatible
+    #
+    # @param compatible
+    # @return compatible generic device type
+    def get_compatible_device_type(self, compatible):
+        for dev_type in list(self._edts['device-types']):
+            if compatible in dev_type:
+                return list(self._edts['device-types'])
+            else:
+                return None
+
+    #
+    # @param compatible
+    # @return dict of compatible devices
+    def _generate_device_dict(self, compatibles):
+        devices = dict()
+        if not isinstance(compatibles, list):
+            compatibles = [compatibles, ]
+        for compatible in compatibles:
+            for device_id in self._edts['compatibles'].get(compatible, []):
+                devices[device_id] = self._edts['devices'][device_id]
+        return devices
+
+    ##
+    # @brief Get all activated compatible devices.
+    #
+    # @param compatibles compatible(s)
+    # @return list of devices that are compatible
+    def get_devices_by_compatible(self, compatibles):
+        return list(self._generate_device_dict(compatibles).values())
+
+    ##
+    # @brief Get device ids of all activated compatible devices.
+    #
+    # @param compatibles compatible(s)
+    # @return list of device ids of activated devices that are compatible
+    def get_device_ids_by_compatible(self, compatibles):
+        return list(self._generate_device_dict(compatibles).keys())
+
+    ##
+    # @brief Get the device dict matching a device_id.
+    #
+    # @param device_id
+    # @return (dict)device
+    def get_device_by_device_id(self, device_id):
+        return self._edts['devices'][device_id]
+
+    ##
+    # @brief Get device id of activated device with given label.
+    #
+    # @return device id
+    def get_device_id_by_label(self, label):
+        for device_id, device in self._edts['devices'].items():
+            if label == device.get('label', None):
+                return device_id
+        return None
+
+    ##
+    # @brief Get device tree property value for the device of the given device id.
+    #
+    # @param device_id
+    # @param property_path Path of the property to access
+    #                      (e.g. 'reg/0', 'interrupts/prio', 'device_id', ...)
+    # @return property value
+    #
+    def get_device_property(self, device_id, property_path, default="<unset>"):
+        property_value = self._edts['devices'].get(device_id, None)
+        property_path_elems = property_path.strip("'").split('/')
+        for elem_index, key in enumerate(property_path_elems):
+            if isinstance(property_value, dict):
+                property_value = property_value.get(key, None)
+            elif isinstance(property_value, list):
+                if int(key) < len(property_value):
+                    property_value = property_value[int(key)]
+                else:
+                    property_value = None
+            else:
+                property_value = None
+        if property_value is None:
+            if default == "<unset>":
+                default = "Device tree property {} not available in {}" \
+                                .format(property_path, device_id)
+            return default
+        return property_value
+
+    def _device_properties_flattened(self, properties, path, flattened, path_prefix):
+        if isinstance(properties, dict):
+            for prop_name in properties:
+                super_path = "{}/{}".format(path, prop_name).strip('/')
+                self._device_properties_flattened(properties[prop_name],
+                                                  super_path, flattened,
+                                                  path_prefix)
+        elif isinstance(properties, list):
+            for i, prop in enumerate(properties):
+                super_path = "{}/{}".format(path, i).strip('/')
+                self._device_properties_flattened(prop, super_path, flattened,
+                                                  path_prefix)
+        else:
+            flattened[path_prefix + path] = properties
+
+    ##
+    # @brief Get the device tree properties for the device of the given device id.
+    #
+    # @param device_id
+    # @param path_prefix
+    # @return dictionary of proerty_path and property_value
+    def device_properties_flattened(self, device_id, path_prefix = ""):
+        flattened = dict()
+        self._device_properties_flattened(self._edts['devices'][device_id],
+                                          '', flattened, path_prefix)
+        return flattened
+
+    def load(self, file_path):
+        with open(file_path, "r") as load_file:
+            self._edts = json.load(load_file)
 
 ##
 # @brief ETDS Database provider
