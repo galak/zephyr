@@ -1,5 +1,7 @@
 zephyr_include_directories(include)
 
+target_include_directories(app PRIVATE include)
+
 zephyr_library()
 zephyr_library_sources(
   source/stdlib/atoi.c

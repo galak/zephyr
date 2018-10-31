@@ -324,9 +324,22 @@ message(STATUS "Cache files will be written to: ${USER_CACHE_DIR}")
 
 include(${BOARD_DIR}/board.cmake OPTIONAL)
 
-zephyr_library_named(app)
+add_library(app)
 
 add_subdirectory(${ZEPHYR_BASE} ${__build_dir})
+
+zephyr_get_include_directories_for_lang(C ZEPHYR_INCLUDES)
+add_dependencies(app offsets_h)
+target_include_directories(app PRIVATE ${ZEPHYR_BASE}/include)
+# TODO: Keep whole-archive
+
+set(lang C) # TODO: if(CONFIG_CPLUSPLUS)
+
+zephyr_get_compile_definitions_for_lang(${lang} x)
+target_compile_definitions(app PRIVATE ${x})
+
+zephyr_get_compile_options_for_lang(${lang} y)
+target_compile_options(app PRIVATE ${y})
 
 # Link 'app' with the Zephyr interface libraries.
 #
