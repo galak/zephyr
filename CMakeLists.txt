@@ -61,6 +61,9 @@ zephyr_include_directories(
   ${STDINCLUDE}
 )
 
+target_include_directories(app PRIVATE arch/${ARCH}/include)
+target_include_directories(app PRIVATE ${PROJECT_BINARY_DIR}/include/generated)
+
 zephyr_compile_definitions(
   KERNEL
   __ZEPHYR__=1
