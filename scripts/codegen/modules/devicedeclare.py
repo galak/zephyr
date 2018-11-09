@@ -111,7 +111,7 @@ class _DeviceCustomTemplate(Template):
     # pattern is ${<property_path>}
     # never starts with /
     # extend default pattern by '-' '/' ',', '(', ')'
-    idpattern = r'[_a-z][_a-z0-9\-/,()\']*'
+    idpattern = r'[_a-z][_a-z0-9\-/,()\'.]*'
 
 class _DeviceGlobalTemplate(Template):
     # pattern is ${<device-id>:<property_path>}
