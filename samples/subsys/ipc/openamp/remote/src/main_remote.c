@@ -76,17 +76,6 @@ static void virtio_set_status(struct virtio_device *vdev, unsigned char status)
 	return ;
 }
 
-static uint32_t virtio_get_features(struct virtio_device *vdev)
-{
-	return 1 << VIRTIO_RPMSG_F_NS;
-}
-
-static void virtio_set_features(struct virtio_device *vdev,
-                                      uint32_t features)
-{
-	return ;
-}
-
 static void virtio_notify(struct virtqueue *vq)
 {
 	uint32_t dummy_data = 0x00110011; /* Some data must be provided */

@@ -19,4 +19,15 @@
 
 #define RSC_TABLE_ADDRESS	0x04000000
 
+static uint32_t virtio_get_features(struct virtio_device *vdev)
+{
+	return 1 << VIRTIO_RPMSG_F_NS;
+}
+
+static void virtio_set_features(struct virtio_device *vdev,
+                                      uint32_t features)
+{
+	return ;
+}
+
 #endif
