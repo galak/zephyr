@@ -41,9 +41,15 @@
 };
 
 &spi1 {
+	spi-slave;
+	#address-cells = <0>;
 	status = "ok";
 	sck-pin = <7>;
 	mosi-pin = <0>;
 	miso-pin = <30>;
 	csn-pin = <25>;
+
+	slave {
+		compatible = "zephyr,bt-hci-spi-slave";
+	};
 };

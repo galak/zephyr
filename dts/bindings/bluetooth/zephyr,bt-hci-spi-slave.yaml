@@ -1,0 +1,25 @@
+#
+# Copyright (c) 2018, Linaro Limited
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+---
+title: Bluetooth module based on Zephyr's Bluetooth HCI SPI driver
+version: 0.1
+
+description: >
+    This binding gives the base representation of a bluetooth module which use
+    Zephyr's bluetooth Host Controller Interface SPI driver (e.g. nRF51822).
+
+parent:
+    bus: spi
+
+properties:
+    compatible:
+      type: string
+      category: required
+      description: compatible strings
+      generation: define
+      constraint: "zephyr,bt-hci-spi-slave"
+
+...

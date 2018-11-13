@@ -22,7 +22,7 @@ properties:
     "#address-cells":
       type: int
       category: required
-      description: should be 1.
+      description: If spi-slave should be 0, otherwise should be 1.
     "#size-cells":
       type: int
       category: required
@@ -41,6 +41,9 @@ properties:
       type: compound
       category: optional
       generation: define, use-prop-name
-
-
+    spi-slave:
+      type: boolean
+      category: optional
+      description: Set of the spi controller used in slave mode
+      generation: define
 ...
