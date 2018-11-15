@@ -1,2 +1,8 @@
 config FLASH_LOAD_OFFSET
 	default $(shell,echo "9")
+
+config CUSTOM_LINKER_SCRIPT
+	default "$(shell,python3 $(ZEPHYR_BASE)/scripts/kconfig_dt.py FLASH_LOAD_OFFSET)"
+
+#config FLASH_LOAD_SIZE
+#	default DT_ZEPHYR_CODE_PARTITION_SIZE
