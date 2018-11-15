@@ -16,6 +16,8 @@
 # overrides SoC values.
 #
 # Note: $ARCH and $BOARD_DIR might be glob patterns.
+source "Kconfig.defconfig"
+
 source "$(BOARD_DIR)/Kconfig.defconfig"
 
 source "boards/shields/*/Kconfig.defconfig"
@@ -75,9 +77,8 @@ config HAS_FLASH_LOAD_OFFSET
 	  This option is selected by targets having a FLASH_LOAD_OFFSET
 	  and FLASH_LOAD_SIZE.
 
-if !HAS_DTS
 config FLASH_LOAD_OFFSET
-	hex "Kernel load offset"
+	int "Kernel load offset"
 	default 0
 	depends on HAS_FLASH_LOAD_OFFSET
 	help
@@ -89,7 +90,7 @@ config FLASH_LOAD_OFFSET
 	  If unsure, leave at the default value 0.
 
 config FLASH_LOAD_SIZE
-	hex "Kernel load size"
+	int "Kernel load size"
 	default 0
 	depends on HAS_FLASH_LOAD_OFFSET
 	help
@@ -99,7 +100,6 @@ config FLASH_LOAD_SIZE
 	  the device.
 
 	  If unsure, leave at the default value 0.
-endif
 
 config TEXT_SECTION_OFFSET
 	hex "TEXT section offset"
