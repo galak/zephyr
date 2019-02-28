@@ -10,6 +10,7 @@
 #include <logging/log_ctrl.h>
 #include <logging/log_output.h>
 #include <misc/printk.h>
+#include <init.h>
 #include <assert.h>
 #include <atomic.h>
 
@@ -17,10 +18,25 @@
 #define CONFIG_LOG_PRINTK_MAX_STRING_LENGTH 1
 #endif
 
+struct log_strdup_buf {
+	atomic_t refcount;
+	char buf[CONFIG_LOG_STRDUP_MAX_STRING + 1]; /* for termination */
+};
+
+#define LOG_STRDUP_POOL_BUFFER_SIZE \
+	(sizeof(struct log_strdup_buf) * CONFIG_LOG_STRDUP_BUF_COUNT)
+
+static const char *log_strdup_fail_msg = "<log_strdup alloc failed>";
+struct k_mem_slab log_strdup_pool;
+static u8_t __noinit __aligned(sizeof(u32_t))
+		log_strdup_pool_buf[LOG_STRDUP_POOL_BUFFER_SIZE];
+
 static struct log_list_t list;
 static atomic_t initialized;
 static bool panic_mode;
+static bool backend_attached;
 static atomic_t buffered_cnt;
+static atomic_t dropped_cnt;
 static k_tid_t proc_tid;
 
 static u32_t dummy_timestamp(void);
@@ -152,7 +168,7 @@ int log_printk(const char *fmt, va_list ap)
 			 sizeof(formatted_str) : length;
 
 		msg = log_msg_hexdump_create(NULL, formatted_str, length);
-		if (!msg) {
+		if (msg == NULL) {
 			return 0;
 		}
 
@@ -165,18 +181,39 @@ int log_printk(const char *fmt, va_list ap)
 	}
 }
 
+/** @brief Count number of arguments in formatted string.
+ *
+ * Function counts number of '%' not followed by '%'.
+ */
+static u32_t count_args(const char *fmt)
+{
+	u32_t args = 0U;
+	bool prev = false; /* if previous char was a modificator. */
+
+	while (*fmt != '\0') {
+		if (*fmt == '%') {
+			prev = !prev;
+		} else if (prev) {
+			args++;
+			prev = false;
+		}
+		fmt++;
+	}
+
+	return args;
+}
+
 void log_generic(struct log_msg_ids src_level, const char *fmt, va_list ap)
 {
 	u32_t args[LOG_MAX_NARGS];
+	u32_t nargs = count_args(fmt);
 
-	for (int i = 0; i < LOG_MAX_NARGS; i++) {
-		args[i] = va_arg(ap, u32_t);
+	for (int i = 0; i < nargs; i++) {
+		u32_t arg = va_arg(ap, u32_t);
+		args[i] = arg;
 	}
 
-	/* Assume maximum amount of parameters. Determining exact number would
-	 * require string analysis.
-	 */
-	log_n(fmt, args, LOG_MAX_NARGS, src_level);
+	log_n(fmt, args, nargs, src_level);
 }
 
 static u32_t timestamp_get(void)
@@ -188,6 +225,14 @@ void log_core_init(void)
 {
 	log_msg_pool_init();
 	log_list_init(&list);
+
+	k_mem_slab_init(&log_strdup_pool, log_strdup_pool_buf,
+				sizeof(struct log_strdup_buf),
+				CONFIG_LOG_STRDUP_BUF_COUNT);
+
+	/* Set default timestamp. */
+	timestamp_func = timestamp_get;
+	log_output_timestamp_freq_set(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC);
 
 	/*
 	 * Initialize aggregated runtime filter levels (no backends are
@@ -210,55 +255,26 @@ void log_core_init(void)
 	}
 }
 
-/*
- * Initialize a backend's runtime filters to match the compile-time
- * settings.
- *
- * (Aggregated filters were already set up in log_core_init().
- */
-static void backend_filter_init(struct log_backend const *const backend)
-{
-	u8_t level;
-	int i;
-
-	if (IS_ENABLED(CONFIG_LOG_RUNTIME_FILTERING)) {
-		for (i = 0; i < log_sources_count(); i++) {
-			level = log_compiled_level_get(i);
-
-			log_filter_set(backend,
-				       CONFIG_LOG_DOMAIN_ID,
-				       i,
-				       level);
-		}
-	}
-}
-
 void log_init(void)
 {
 	assert(log_backend_count_get() < LOG_FILTERS_NUM_OF_SLOTS);
 	int i;
 
-	if (atomic_inc(&initialized)) {
+	if (atomic_inc(&initialized) != 0) {
 		return;
 	}
-
-	/* Set default timestamp. */
-	timestamp_func = timestamp_get;
-	log_output_timestamp_freq_set(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC);
 
 	/* Assign ids to backends. */
 	for (i = 0; i < log_backend_count_get(); i++) {
 		const struct log_backend *backend = log_backend_get(i);
 
-		log_backend_id_set(backend,
-				   i + LOG_FILTER_FIRST_BACKEND_SLOT_IDX);
+		if (backend->autostart) {
+			if (backend->api->init != NULL) {
+				backend->api->init();
+			}
 
-		backend_filter_init(backend);
-		if (backend->api->init) {
-			backend->api->init();
+			log_backend_enable(backend, NULL, CONFIG_LOG_MAX_LEVEL);
 		}
-
-		log_backend_activate(backend, NULL);
 	}
 }
 
@@ -298,6 +314,10 @@ int log_set_timestamp_func(timestamp_get_t timestamp_getter, u32_t freq)
 void log_panic(void)
 {
 	struct log_backend const *backend;
+
+	if (panic_mode) {
+		return;
+	}
 
 	for (int i = 0; i < log_backend_count_get(); i++) {
 		backend = log_backend_get(i);
@@ -342,15 +362,33 @@ static void msg_process(struct log_msg *msg, bool bypass)
 				log_backend_put(backend, msg);
 			}
 		}
+	} else {
+		atomic_inc(&dropped_cnt);
 	}
 
 	log_msg_put(msg);
+}
+
+void dropped_notify(void)
+{
+	u32_t dropped = atomic_set(&dropped_cnt, 0);
+
+	for (int i = 0; i < log_backend_count_get(); i++) {
+		struct log_backend const *backend = log_backend_get(i);
+
+		if (log_backend_is_active(backend)) {
+			log_backend_dropped(backend, dropped);
+		}
+	}
 }
 
 bool log_process(bool bypass)
 {
 	struct log_msg *msg;
 
+	if (!backend_attached) {
+		return false;
+	}
 	unsigned int key = irq_lock();
 
 	msg = log_list_head_get(&list);
@@ -359,6 +397,10 @@ bool log_process(bool bypass)
 	if (msg != NULL) {
 		atomic_dec(&buffered_cnt);
 		msg_process(msg, bypass);
+	}
+
+	if (!bypass && dropped_cnt) {
+		dropped_notify();
 	}
 
 	return (log_list_head_peek(&list) != NULL);
@@ -376,9 +418,7 @@ u32_t log_src_cnt_get(u32_t domain_id)
 
 const char *log_source_name_get(u32_t domain_id, u32_t src_id)
 {
-	assert(src_id < log_sources_count());
-
-	return log_name_get(src_id);
+	return src_id < log_sources_count() ? log_name_get(src_id) : NULL;
 }
 
 static u32_t max_filter_get(u32_t filters)
@@ -398,10 +438,10 @@ static u32_t max_filter_get(u32_t filters)
 	return max_filter;
 }
 
-void log_filter_set(struct log_backend const *const backend,
-		    u32_t domain_id,
-		    u32_t src_id,
-		    u32_t level)
+u32_t log_filter_set(struct log_backend const *const backend,
+		     u32_t domain_id,
+		     u32_t src_id,
+		     u32_t level)
 {
 	assert(src_id < log_sources_count());
 
@@ -412,13 +452,23 @@ void log_filter_set(struct log_backend const *const backend,
 
 		if (backend == NULL) {
 			struct log_backend const *backend;
+			u32_t max = 0U;
+			u32_t current;
 
 			for (int i = 0; i < log_backend_count_get(); i++) {
 				backend = log_backend_get(i);
-				log_filter_set(backend, domain_id,
-					       src_id, level);
+				current = log_filter_set(backend, domain_id,
+							 src_id, level);
+				max = max(current, max);
 			}
+
+			level = max;
 		} else {
+			u32_t max = log_filter_get(backend, domain_id,
+						   src_id, false);
+
+			level = min(level, max);
+
 			LOG_FILTER_SLOT_SET(filters,
 					    log_backend_id_get(backend),
 					    level);
@@ -433,6 +483,8 @@ void log_filter_set(struct log_backend const *const backend,
 					    new_aggr_filter);
 		}
 	}
+
+	return level;
 }
 
 static void backend_filter_set(struct log_backend const *const backend,
@@ -453,8 +505,15 @@ void log_backend_enable(struct log_backend const *const backend,
 			void *ctx,
 			u32_t level)
 {
+	/* As first slot in filtering mask is reserved, backend ID has offset.*/
+	u32_t id = LOG_FILTER_FIRST_BACKEND_SLOT_IDX;
+
+	id += backend - log_backend_get(0);
+
+	log_backend_id_set(backend, id);
 	backend_filter_set(backend, level);
 	log_backend_activate(backend, ctx);
+	backend_attached = true;
 }
 
 void log_backend_disable(struct log_backend const *const backend)
@@ -480,29 +539,80 @@ u32_t log_filter_get(struct log_backend const *const backend,
 	}
 }
 
+char *log_strdup(const char *str)
+{
+	struct log_strdup_buf *dup;
+	int err;
+
+	err = k_mem_slab_alloc(&log_strdup_pool, (void **)&dup, K_NO_WAIT);
+	if (err != 0) {
+		/* failed to allocate */
+		return (char *)log_strdup_fail_msg;
+	}
+
+	/* Set 'allocated' flag. */
+	(void)atomic_set(&dup->refcount, 1);
+
+	strncpy(dup->buf, str, sizeof(dup->buf) - 2);
+	dup->buf[sizeof(dup->buf) - 2] = '~';
+	dup->buf[sizeof(dup->buf) - 1] = '\0';
+
+	return dup->buf;
+}
+
+bool log_is_strdup(void *buf)
+{
+	struct log_strdup_buf *pool_first, *pool_last;
+
+	pool_first = (struct log_strdup_buf *)log_strdup_pool_buf;
+	pool_last = pool_first + CONFIG_LOG_STRDUP_BUF_COUNT - 1;
+
+	return ((char *)buf >= pool_first->buf) &&
+	       ((char *)buf <= pool_last->buf);
+
+}
+
+void log_free(void *str)
+{
+	struct log_strdup_buf *dup = CONTAINER_OF(str, struct log_strdup_buf,
+						  buf);
+
+	if (atomic_dec(&dup->refcount) == 1) {
+		k_mem_slab_free(&log_strdup_pool, (void **)&dup);
+	}
+}
+
 #ifdef CONFIG_LOG_PROCESS_THREAD
 static void log_process_thread_func(void *dummy1, void *dummy2, void *dummy3)
 {
 	log_init();
 	thread_set(k_current_get());
 
-	while (1) {
+	while (true) {
 		if (log_process(false) == false) {
 			k_sleep(CONFIG_LOG_PROCESS_THREAD_SLEEP_MS);
 		}
 	}
 }
 
-K_THREAD_DEFINE(log_process_thread, CONFIG_LOG_PROCESS_THREAD_STACK_SIZE,
-		log_process_thread_func, NULL, NULL, NULL,
-		CONFIG_LOG_PROCESS_THREAD_PRIO, 0, K_NO_WAIT);
-#else
-#include <init.h>
+K_THREAD_STACK_DEFINE(logging_stack, CONFIG_LOG_PROCESS_THREAD_STACK_SIZE);
+struct k_thread logging_thread;
+#endif /* CONFIG_LOG_PROCESS_THREAD */
+
 static int enable_logger(struct device *arg)
 {
 	ARG_UNUSED(arg);
+#ifdef CONFIG_LOG_PROCESS_THREAD
+	/* start logging thread */
+	k_thread_create(&logging_thread, logging_stack,
+			K_THREAD_STACK_SIZEOF(logging_stack),
+			log_process_thread_func, NULL, NULL, NULL,
+			K_LOWEST_APPLICATION_THREAD_PRIO, 0, K_NO_WAIT);
+	k_thread_name_set(&logging_thread, "logging");
+#else
 	log_init();
+#endif
 	return 0;
 }
+
 SYS_INIT(enable_logger, POST_KERNEL, 0);
-#endif /* CONFIG_LOG_PROCESS_THREAD */

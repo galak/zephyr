@@ -306,7 +306,8 @@ bool z_syscall_verify_msg(bool expr, const char *fmt, ...)
 #define Z_SYSCALL_VERIFY(expr) Z_SYSCALL_VERIFY_MSG(expr, #expr)
 
 #define Z_SYSCALL_MEMORY(ptr, size, write) \
-	Z_SYSCALL_VERIFY_MSG(!_arch_buffer_validate((void *)ptr, size, write), \
+	Z_SYSCALL_VERIFY_MSG(_arch_buffer_validate((void *)ptr, size, write) \
+			     == 0, \
 			     "Memory region %p (size %u) %s access denied", \
 			     (void *)(ptr), (u32_t)(size), \
 			     write ? "write" : "read")
@@ -398,7 +399,7 @@ static inline int _obj_validation_check(struct _k_object *ko,
 	ret = _k_object_validate(ko, otype, init);
 
 #ifdef CONFIG_PRINTK
-	if (ret) {
+	if (ret != 0) {
 		_dump_object_error(ret, obj, ko, otype);
 	}
 #else
@@ -410,8 +411,8 @@ static inline int _obj_validation_check(struct _k_object *ko,
 
 #define Z_SYSCALL_IS_OBJ(ptr, type, init) \
 	Z_SYSCALL_VERIFY_MSG( \
-	    !_obj_validation_check(_k_object_find((void *)ptr), (void *)ptr, \
-				   type, init), "access denied")
+	    _obj_validation_check(_k_object_find((void *)ptr), (void *)ptr, \
+				   type, init) == 0, "access denied")
 
 /**
  * @brief Runtime check driver object pointer for presence of operation
@@ -434,9 +435,36 @@ static inline int _obj_validation_check(struct _k_object *ko,
 	})
 
 /**
+ * @brief Runtime check that device object is of a specific driver type
+ *
+ * Checks that the driver object passed in is initialized, the caller has
+ * correct permissions, and that it belongs to the specified driver
+ * subsystems. Additionally, all devices store a function pointer to the
+ * driver's init function. If this doesn't match the value provided, the
+ * check will fail.
+ *
+ * This provides an easy way to determine if a device object not only
+ * belongs to a particular subsystem, but is of a specific device driver
+ * implementation. Useful for defining out-of-subsystem system calls
+ * which are implemented for only one driver.
+ *
+ * @param _device Untrusted device pointer
+ * @param _dtype Expected kernel object type for the provided device pointer
+ * @param _init_fn Expected init function memory address
+ * @return 0 on success, nonzero on failure
+ */
+#define Z_SYSCALL_SPECIFIC_DRIVER(_device, _dtype, _init_fn) \
+	({ \
+		struct device *_dev = (struct device *)_device; \
+		Z_SYSCALL_OBJ(_dev, _dtype) || \
+			Z_SYSCALL_VERIFY_MSG(_dev->config->init == _init_fn, \
+					     "init function mismatch"); \
+	})
+
+/**
  * @brief Runtime check kernel object pointer for non-init functions
  *
- * Calls _k_object_validate and triggers a kernel oops if the check files.
+ * Calls _k_object_validate and triggers a kernel oops if the check fails.
  * For use in system call handlers which are not init functions; a fatal
  * error will occur if the object is not initialized.
  *
@@ -495,7 +523,7 @@ static inline int _obj_validation_check(struct _k_object *ko,
  */
 
 #define __SYSCALL_HANDLER0(name_) \
-	u32_t _handler_ ## name_(u32_t arg1 __unused, \
+	u32_t hdlr_ ## name_(u32_t arg1 __unused, \
 				 u32_t arg2 __unused, \
 				 u32_t arg3 __unused, \
 				 u32_t arg4 __unused, \
@@ -504,7 +532,7 @@ static inline int _obj_validation_check(struct _k_object *ko,
 				 void *ssf)
 
 #define __SYSCALL_HANDLER1(name_, arg1_) \
-	u32_t _handler_ ## name_(u32_t arg1_, \
+	u32_t hdlr_ ## name_(u32_t arg1_, \
 				 u32_t arg2 __unused, \
 				 u32_t arg3 __unused, \
 				 u32_t arg4 __unused, \
@@ -513,7 +541,7 @@ static inline int _obj_validation_check(struct _k_object *ko,
 				 void *ssf)
 
 #define __SYSCALL_HANDLER2(name_, arg1_, arg2_) \
-	u32_t _handler_ ## name_(u32_t arg1_, \
+	u32_t hdlr_ ## name_(u32_t arg1_, \
 				 u32_t arg2_, \
 				 u32_t arg3 __unused, \
 				 u32_t arg4 __unused, \
@@ -522,7 +550,7 @@ static inline int _obj_validation_check(struct _k_object *ko,
 				 void *ssf)
 
 #define __SYSCALL_HANDLER3(name_, arg1_, arg2_, arg3_) \
-	u32_t _handler_ ## name_(u32_t arg1_, \
+	u32_t hdlr_ ## name_(u32_t arg1_, \
 				 u32_t arg2_, \
 				 u32_t arg3_, \
 				 u32_t arg4 __unused, \
@@ -531,7 +559,7 @@ static inline int _obj_validation_check(struct _k_object *ko,
 				 void *ssf)
 
 #define __SYSCALL_HANDLER4(name_, arg1_, arg2_, arg3_, arg4_) \
-	u32_t _handler_ ## name_(u32_t arg1_, \
+	u32_t hdlr_ ## name_(u32_t arg1_, \
 				 u32_t arg2_, \
 				 u32_t arg3_, \
 				 u32_t arg4_, \
@@ -540,7 +568,7 @@ static inline int _obj_validation_check(struct _k_object *ko,
 				 void *ssf)
 
 #define __SYSCALL_HANDLER5(name_, arg1_, arg2_, arg3_, arg4_, arg5_) \
-	u32_t _handler_ ## name_(u32_t arg1_, \
+	u32_t hdlr_ ## name_(u32_t arg1_, \
 				 u32_t arg2_, \
 				 u32_t arg3_, \
 				 u32_t arg4_, \
@@ -549,7 +577,7 @@ static inline int _obj_validation_check(struct _k_object *ko,
 				 void *ssf)
 
 #define __SYSCALL_HANDLER6(name_, arg1_, arg2_, arg3_, arg4_, arg5_, arg6_) \
-	u32_t _handler_ ## name_(u32_t arg1_, \
+	u32_t hdlr_ ## name_(u32_t arg1_, \
 				 u32_t arg2_, \
 				 u32_t arg3_, \
 				 u32_t arg4_, \

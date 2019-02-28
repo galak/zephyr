@@ -4,10 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if defined(CONFIG_NET_DEBUG_COAP)
-#define SYS_LOG_DOMAIN "coap"
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_coap, CONFIG_COAP_LOG_LEVEL);
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -106,7 +104,7 @@ static int decode_delta(struct option_context *context, u16_t opt,
 	if (opt == COAP_OPTION_EXT_13) {
 		u8_t val;
 
-		*hdr_len = 1;
+		*hdr_len = 1U;
 		context->frag = net_frag_read_u8(context->frag,
 						 context->offset,
 						 &context->offset,
@@ -121,7 +119,7 @@ static int decode_delta(struct option_context *context, u16_t opt,
 	} else if (opt == COAP_OPTION_EXT_14) {
 		u16_t val;
 
-		*hdr_len = 2;
+		*hdr_len = 2U;
 		context->frag = net_frag_read_be16(context->frag,
 						   context->offset,
 						   &context->offset,
@@ -270,8 +268,8 @@ static int parse_options(const struct coap_packet *cpkt,
 		return r;
 	}
 
-	num = 0;
-	opt_len = 0;
+	num = 0U;
+	opt_len = 0U;
 
 	while (true) {
 		struct coap_option *option;
@@ -487,7 +485,7 @@ static inline bool is_addr_unspecified(const struct sockaddr *addr)
 	}
 
 	if (addr->sa_family == AF_INET6) {
-		return net_is_ipv6_addr_unspecified(
+		return net_ipv6_is_addr_unspecified(
 			&(net_sin6(addr)->sin6_addr));
 	} else if (addr->sa_family == AF_INET) {
 		return net_sin(addr)->sin_addr.s4_addr32[0] == 0;
@@ -605,9 +603,9 @@ static bool uri_path_eq(const struct coap_packet *cpkt,
 			u8_t opt_num)
 {
 	u8_t i;
-	u8_t j = 0;
+	u8_t j = 0U;
 
-	for (i = 0; i < opt_num && path[j]; i++) {
+	for (i = 0U; i < opt_num && path[j]; i++) {
 		if (options[i].delta != COAP_OPTION_URI_PATH) {
 			continue;
 		}
@@ -683,7 +681,7 @@ int coap_handle_request(struct coap_packet *cpkt,
 		code = coap_header_get_code(cpkt);
 		method = method_from_code(resource, code);
 		if (!method) {
-			return 0;
+			return -EPERM;
 		}
 
 		return method(resource, cpkt);
@@ -705,7 +703,7 @@ unsigned int coap_option_value_to_int(const struct coap_option *option)
 		return (option->value[2] << 0) | (option->value[1] << 8) |
 			(option->value[0] << 16);
 	case 4:
-		return (option->value[2] << 0) | (option->value[2] << 8) |
+		return (option->value[3] << 0) | (option->value[2] << 8) |
 			(option->value[1] << 16) | (option->value[0] << 24);
 	default:
 		return 0;
@@ -717,7 +715,7 @@ unsigned int coap_option_value_to_int(const struct coap_option *option)
 static int get_observe_option(const struct coap_packet *cpkt)
 {
 	struct coap_option option = {};
-	u16_t count = 1;
+	u16_t count = 1U;
 	int r;
 
 	r = coap_find_options(cpkt, COAP_OPTION_OBSERVE, &option, count);
@@ -941,7 +939,7 @@ static u8_t encode_extended_option(u16_t num, u8_t *opt, u16_t *ext)
 {
 	if (num < COAP_OPTION_EXT_13) {
 		*opt = num;
-		*ext = 0;
+		*ext = 0U;
 
 		return 0;
 	} else if (num < COAP_OPTION_EXT_269) {
@@ -1051,21 +1049,21 @@ int coap_append_option_int(struct coap_packet *cpkt, u16_t code,
 	u8_t data[4], len;
 
 	if (val == 0) {
-		data[0] = 0;
-		len = 0;
+		data[0] = 0U;
+		len = 0U;
 	} else if (val < 0xFF) {
 		data[0] = (u8_t) val;
-		len = 1;
+		len = 1U;
 	} else if (val < 0xFFFF) {
 		sys_put_be16(val, data);
-		len = 2;
+		len = 2U;
 	} else if (val < 0xFFFFFF) {
-		sys_put_be16(val, data);
-		data[2] = val >> 16;
-		len = 3;
+		sys_put_be16(val, &data[1]);
+		data[0] = val >> 16;
+		len = 3U;
 	} else {
 		sys_put_be32(val, data);
-		len = 4;
+		len = 4U;
 	}
 
 	return coap_packet_append_option(cpkt, code, data, len);
@@ -1095,7 +1093,7 @@ int coap_find_options(const struct coap_packet *cpkt, u16_t code,
 		return r;
 	}
 
-	opt_len = 0;
+	opt_len = 0U;
 	count = 0;
 
 	while (context.delta <= code && count < veclen) {
@@ -1253,7 +1251,7 @@ struct net_buf *coap_packet_get_payload(const struct coap_packet *cpkt,
 	}
 
 	*offset = 0xffff;
-	*len = 0;
+	*len = 0U;
 
 	coap_pkt_len = get_coap_packet_len(cpkt->pkt);
 
@@ -1288,7 +1286,7 @@ int coap_append_block1_option(struct coap_packet *cpkt,
 			      struct coap_block_context *ctx)
 {
 	u16_t bytes = coap_block_size_to_bytes(ctx->block_size);
-	unsigned int val = 0;
+	unsigned int val = 0U;
 	int r;
 
 	if (is_request(cpkt)) {

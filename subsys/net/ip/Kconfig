@@ -20,6 +20,28 @@ config NET_RAW_MODE
 
 if !NET_RAW_MODE
 
+choice
+	prompt "Qemu networking"
+	default NET_QEMU_SLIP
+	depends on QEMU_TARGET
+	help
+	  Can be used to select how the network connectivity is established
+	  from inside qemu to host system. This can be done either via
+	  serial connection (SLIP) or via Qemu ethernet driver.
+
+config NET_QEMU_SLIP
+	bool "SLIP"
+	help
+	  Connect to host or to another Qemu via SLIP.
+
+config NET_QEMU_ETHERNET
+	bool "Ethernet"
+	help
+	  Connect to host system via Qemu ethernet driver support. One such
+	  driver that Zephyr supports is Intel e1000 ethernet driver.
+
+endchoice
+
 config NET_INIT_PRIO
 	int
 	default 90
@@ -27,18 +49,31 @@ config NET_INIT_PRIO
 	  Network initialization priority level. This number tells how
 	  early in the boot the network stack is initialized.
 
-source "subsys/net/ip/Kconfig.debug"
-
 source "subsys/net/ip/Kconfig.ipv6"
 
 source "subsys/net/ip/Kconfig.ipv4"
 
 config NET_SHELL
 	bool "Enable network shell utilities"
-	select CONSOLE_SHELL
+	select SHELL
 	help
 	  Activate shell module that provides network commands like
 	  ping to the console.
+
+config NET_SHELL_DYN_CMD_COMPLETION
+	bool "Enable network shell dynamic command completion"
+	depends on NET_SHELL
+	default y
+	help
+	  Enable various net-shell command to support dynamic command
+	  completion. This means that for example the nbr command can
+	  automatically complete the neighboring IPv6 address and user
+	  does not need to type it manually.
+	  Please note that this uses more memory in order to save the
+	  dynamic command strings. For example for nbr command the
+	  increase is 320 bytes (8 neighbors * 40 bytes for IPv6 address
+	  length) by default. Other dynamic completion commands in
+	  net-shell require also some smaller amount of memory.
 
 config NET_TC_TX_COUNT
 	int "How many Tx traffic classes to have for each network device"
@@ -180,11 +215,13 @@ config NET_TCP_CHECKSUM
 	  Enables TCP handler to check TCP checksum. If the checksum is invalid,
 	  then the packet is discarded.
 
-config NET_DEBUG_TCP
-	bool "Debug TCP"
-	depends on NET_TCP && NET_LOG
-	help
-	  Enables TCP handler output debug messages
+if NET_TCP
+module = NET_TCP
+module-dep = NET_LOG
+module-str = Log level for TCP
+module-help = Enables TCP handler output debug messages
+source "subsys/net/Kconfig.template.log_config.net"
+endif # NET_TCP
 
 config NET_TCP_BACKLOG_SIZE
 	int "Number of simultaneous incoming TCP connections"
@@ -267,11 +304,13 @@ config NET_UDP_CHECKSUM
 	  Enables UDP handler to check UDP checksum. If the checksum is invalid,
 	  then the packet is discarded.
 
-config NET_DEBUG_UDP
-	bool "Debug UDP"
-	depends on NET_UDP && NET_LOG
-	help
-	  Enables UDP handler output debug messages
+if NET_UDP
+module = NET_UDP
+module-dep = NET_LOG
+module-str = Log level for UDP
+module-help = Enables UDP handler output debug messages
+source "subsys/net/Kconfig.template.log_config.net"
+endif # NET_UDP
 
 config NET_MAX_CONN
 	int "How many network connections are supported"
@@ -336,6 +375,7 @@ config NET_TEST
 
 config NET_SLIP_TAP
 	bool "TAP SLIP driver"
+	depends on NET_QEMU_SLIP
 	select SLIP
 	select UART_PIPE
 	select UART_INTERRUPT_DRIVEN
@@ -353,11 +393,13 @@ config NET_TRICKLE
 	  Normally this is enabled automatically if needed,
 	  so say 'n' if unsure.
 
-config NET_DEBUG_TRICKLE
-	bool "Debug Trickle algorithm"
-	depends on NET_TRICKLE && NET_LOG
-	help
-	  Enables Trickle library output debug messages
+if NET_TRICKLE
+module = NET_TRICKLE
+module-dep = NET_LOG
+module-str = Log level for Trickle algorithm
+module-help = Enables Trickle library output debug messages
+source "subsys/net/Kconfig.template.log_config.net"
+endif # NET_TRICKLE
 
 endif # NET_RAW_MODE
 
@@ -464,11 +506,17 @@ config NET_PROMISCUOUS_MODE
 	  device driver supports promiscuous mode. The user application
 	  also needs to read the promiscuous mode data.
 
+if NET_PROMISCUOUS_MODE
+module = NET_PROMISC
+module-dep = NET_LOG
+module-str = Log level for promiscuous mode
+module-help = Enables promiscuous mode to output debug messages.
+source "subsys/net/Kconfig.template.log_config.net"
+endif # NET_PROMISCUOUS_MODE
+
 source "subsys/net/ip/Kconfig.stack"
 
 source "subsys/net/ip/Kconfig.mgmt"
-
-source "subsys/net/ip/Kconfig.rpl"
 
 source "subsys/net/ip/Kconfig.stats"
 
@@ -477,12 +525,14 @@ config NET_OFFLOAD
 	help
 	  Enables TCP/IP stack to be offload to a co-processor.
 
-config NET_DEBUG_NET_OFFLOAD
-	bool "Debug Net Offload Layer"
-	default y if NET_LOG_GLOBAL
-	depends on NET_LOG
-	depends on NET_OFFLOAD
-	help
-	  Enables offload TCP/IP stack output debug messages.
+if NET_OFFLOAD
+module = NET_OFFLOAD
+module-dep = NET_LOG
+module-str = Log level for offload layer
+module-help = Enables offload layer to output debug messages.
+source "subsys/net/Kconfig.template.log_config.net"
+endif # NET_OFFLOAD
+
+source "subsys/net/ip/Kconfig.debug"
 
 endmenu

@@ -104,16 +104,6 @@ struct i2c_msg {
 	u8_t		flags;
 };
 
-union __deprecated dev_config {
-	u32_t raw;
-	struct __bits {
-		u32_t        use_10_bit_addr : 1;
-		u32_t        speed : 3;
-		u32_t        is_master_device : 1;
-		u32_t        reserved : 26;
-	} bits;
-};
-
 /**
  * @cond INTERNAL_HIDDEN
  *
@@ -199,7 +189,8 @@ __syscall int i2c_configure(struct device *dev, u32_t dev_config);
 
 static inline int _impl_i2c_configure(struct device *dev, u32_t dev_config)
 {
-	const struct i2c_driver_api *api = dev->driver_api;
+	const struct i2c_driver_api *api =
+		(const struct i2c_driver_api *)dev->driver_api;
 
 	return api->configure(dev, dev_config);
 }
@@ -230,7 +221,8 @@ static inline int _impl_i2c_transfer(struct device *dev,
 				     struct i2c_msg *msgs, u8_t num_msgs,
 				     u16_t addr)
 {
-	const struct i2c_driver_api *api = dev->driver_api;
+	const struct i2c_driver_api *api =
+		(const struct i2c_driver_api *)dev->driver_api;
 
 	return api->transfer(dev, msgs, num_msgs, addr);
 }
@@ -264,7 +256,8 @@ __syscall int i2c_slave_register(struct device *dev,
 static inline int _impl_i2c_slave_register(struct device *dev,
 					   struct i2c_slave_config *cfg)
 {
-	const struct i2c_driver_api *api = dev->driver_api;
+	const struct i2c_driver_api *api =
+		(const struct i2c_driver_api *)dev->driver_api;
 
 	if (!api->slave_register) {
 		return -ENOTSUP;
@@ -294,7 +287,8 @@ __syscall int i2c_slave_unregister(struct device *dev,
 static inline int _impl_i2c_slave_unregister(struct device *dev,
 					     struct i2c_slave_config *cfg)
 {
-	const struct i2c_driver_api *api = dev->driver_api;
+	const struct i2c_driver_api *api =
+		(const struct i2c_driver_api *)dev->driver_api;
 
 	if (!api->slave_unregister) {
 		return -ENOTSUP;
@@ -319,7 +313,8 @@ __syscall int i2c_slave_driver_register(struct device *dev);
 
 static inline int _impl_i2c_slave_driver_register(struct device *dev)
 {
-	const struct i2c_slave_driver_api *api = dev->driver_api;
+	const struct i2c_slave_driver_api *api =
+		(const struct i2c_slave_driver_api *)dev->driver_api;
 
 	return api->driver_register(dev);
 }
@@ -340,7 +335,8 @@ __syscall int i2c_slave_driver_unregister(struct device *dev);
 
 static inline int _impl_i2c_slave_driver_unregister(struct device *dev)
 {
-	const struct i2c_slave_driver_api *api = dev->driver_api;
+	const struct i2c_slave_driver_api *api =
+		(const struct i2c_slave_driver_api *)dev->driver_api;
 
 	return api->driver_unregister(dev);
 }
@@ -362,12 +358,12 @@ static inline int _impl_i2c_slave_driver_unregister(struct device *dev)
  * @retval 0 If successful.
  * @retval -EIO General input / output error.
  */
-static inline int i2c_write(struct device *dev, u8_t *buf,
+static inline int i2c_write(struct device *dev, const u8_t *buf,
 			    u32_t num_bytes, u16_t addr)
 {
 	struct i2c_msg msg;
 
-	msg.buf = buf;
+	msg.buf = (u8_t *)buf;
 	msg.len = num_bytes;
 	msg.flags = I2C_MSG_WRITE | I2C_MSG_STOP;
 
@@ -448,7 +444,7 @@ static inline int i2c_burst_read(struct device *dev, u16_t dev_addr,
  * @retval -EIO General input / output error.
  */
 static inline int i2c_burst_write(struct device *dev, u16_t dev_addr,
-				  u8_t start_addr, u8_t *buf,
+				  u8_t start_addr, const u8_t *buf,
 				  u32_t num_bytes)
 {
 	struct i2c_msg msg[2];
@@ -457,7 +453,7 @@ static inline int i2c_burst_write(struct device *dev, u16_t dev_addr,
 	msg[0].len = 1;
 	msg[0].flags = I2C_MSG_WRITE;
 
-	msg[1].buf = buf;
+	msg[1].buf = (u8_t *)buf;
 	msg[1].len = num_bytes;
 	msg[1].flags = I2C_MSG_WRITE | I2C_MSG_STOP;
 
@@ -592,7 +588,7 @@ static inline int i2c_burst_read16(struct device *dev, u16_t dev_addr,
  * @retval Negative errno code if failure.
  */
 static inline int i2c_burst_write16(struct device *dev, u16_t dev_addr,
-				    u16_t start_addr, u8_t *buf,
+				    u16_t start_addr, const u8_t *buf,
 				    u32_t num_bytes)
 {
 	u8_t addr_buffer[2];
@@ -604,7 +600,7 @@ static inline int i2c_burst_write16(struct device *dev, u16_t dev_addr,
 	msg[0].len = 2;
 	msg[0].flags = I2C_MSG_WRITE;
 
-	msg[1].buf = buf;
+	msg[1].buf = (u8_t *)buf;
 	msg[1].len = num_bytes;
 	msg[1].flags = I2C_MSG_WRITE | I2C_MSG_STOP;
 
@@ -705,13 +701,13 @@ static inline int i2c_reg_update16(struct device *dev, u16_t dev_addr,
  * @retval Negative errno code if failure.
  */
 static inline int i2c_burst_read_addr(struct device *dev, u16_t dev_addr,
-				      u8_t *start_addr,
+				      const u8_t *start_addr,
 				      const u8_t addr_size,
 				      u8_t *buf, u32_t num_bytes)
 {
 	struct i2c_msg msg[2];
 
-	msg[0].buf = start_addr;
+	msg[0].buf = (u8_t *)start_addr;
 	msg[0].len = addr_size;
 	msg[0].flags = I2C_MSG_WRITE;
 
@@ -740,17 +736,17 @@ static inline int i2c_burst_read_addr(struct device *dev, u16_t dev_addr,
  * @retval Negative errno code if failure.
  */
 static inline int i2c_burst_write_addr(struct device *dev, u16_t dev_addr,
-				       u8_t *start_addr,
+				       const u8_t *start_addr,
 				       const u8_t addr_size,
-				       u8_t *buf, u32_t num_bytes)
+				       const u8_t *buf, u32_t num_bytes)
 {
 	struct i2c_msg msg[2];
 
-	msg[0].buf = start_addr;
+	msg[0].buf = (u8_t *)start_addr;
 	msg[0].len = addr_size;
 	msg[0].flags = I2C_MSG_WRITE;
 
-	msg[1].buf = buf;
+	msg[1].buf = (u8_t *)buf;
 	msg[1].len = num_bytes;
 	msg[1].flags = I2C_MSG_WRITE | I2C_MSG_STOP;
 
@@ -776,8 +772,8 @@ static inline int i2c_burst_write_addr(struct device *dev, u16_t dev_addr,
  */
 static inline int i2c_reg_read_addr(struct device *dev,
 				    u16_t dev_addr,
-				    u8_t *reg_addr,
-				    const u8_t addr_size,
+				    const u8_t *reg_addr,
+				    u8_t addr_size,
 				    u8_t *value)
 {
 	return i2c_burst_read_addr(dev, dev_addr, reg_addr,
@@ -803,7 +799,7 @@ static inline int i2c_reg_read_addr(struct device *dev,
  */
 static inline int i2c_reg_write_addr(struct device *dev,
 				     u16_t dev_addr,
-				     u8_t *reg_addr,
+				     const u8_t *reg_addr,
 				     const u8_t addr_size,
 				     u8_t value)
 {
@@ -831,7 +827,7 @@ static inline int i2c_reg_write_addr(struct device *dev,
  */
 static inline int i2c_reg_update_addr(struct device *dev,
 				      u16_t dev_addr,
-				      u8_t *reg_addr,
+				      const u8_t *reg_addr,
 				      u8_t addr_size,
 				      u8_t mask,
 				      u8_t value)

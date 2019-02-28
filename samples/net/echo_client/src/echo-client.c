@@ -16,11 +16,8 @@
  * This might not be what you want to do in your app so caveat emptor.
  */
 
-#if 1
-#define SYS_LOG_DOMAIN "echo-client"
-#define NET_SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_echo_client_sample, LOG_LEVEL_DBG);
 
 #include <zephyr.h>
 #include <errno.h>
@@ -84,7 +81,7 @@ struct k_sem tcp_ready;
 void panic(const char *msg)
 {
 	if (msg) {
-		NET_ERR("%s", msg);
+		LOG_ERR("%s", msg);
 	}
 
 	k_sem_give(&quit_lock);
@@ -96,9 +93,11 @@ void panic(const char *msg)
 
 static inline int init_app(void)
 {
-	NET_INFO(APP_BANNER);
+	LOG_INF(APP_BANNER);
 
 	k_sem_init(&quit_lock, 0, UINT_MAX);
+
+	init_vlan();
 
 	return 0;
 }
@@ -153,7 +152,7 @@ void main(void)
 	k_sem_take(&quit_lock, K_FOREVER);
 
 quit:
-	NET_INFO("Stopping...");
+	LOG_INF("Stopping...");
 
 	if (IS_ENABLED(CONFIG_NET_UDP)) {
 		stop_udp();

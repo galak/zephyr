@@ -1,4 +1,5 @@
 tests:
-  crypto.ccm_mode:
-    tags: crypto aes ccm
+  crypto.tinycrypt:
+    tags: tinycrypt crypto aes ccm
     min_ram: 48
+    min_flash: 129

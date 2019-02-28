@@ -34,14 +34,15 @@ config MODEM_RECEIVER_MAX_CONTEXTS
 
 config MODEM_SHELL
 	bool "Enable modem shell utilities"
-	select CONSOLE_SHELL
+	select SHELL
 	help
 	  Activate shell module that provides modem utilities like
 	  sending a command to the modem UART.
 
 config MODEM_WNCM14A2A
 	bool "Enable Wistron LTE-M modem driver"
-	depends on UART_INTERRUPT_DRIVEN
+	depends on SERIAL_SUPPORT_INTERRUPT
+	select UART_INTERRUPT_DRIVEN
 	select MODEM_RECEIVER
 	select NET_OFFLOAD
 	select UART_MCUX_2 if BOARD_FRDM_K64F
@@ -87,18 +88,8 @@ config MODEM_WNCM14A2A_INIT_PRIORITY
 	  Note that the priority needs to be lower than the net stack
 	  so that it can start before the networking sub-system.
 
-config SYS_LOG_MODEM_LEVEL
-	int "Modem driver log level"
-	depends on SYS_LOG
-	default 0
-	range 0 4
-	help
-	  Sets log level for modem drivers.
-	  Levels are:
-	  0 OFF, do not write
-	  1 ERROR, only write SYS_LOG_ERR
-	  2 WARNING, write SYS_LOG_WRN in addition to previous level
-	  3 INFO, write SYS_LOG_INF in addition to previous levels
-	  4 DEBUG, write SYS_LOG_DBG in addition to previous levels
+module = MODEM
+module-str = modem
+source "subsys/logging/Kconfig.template.log_config"
 
 endif # MODEM

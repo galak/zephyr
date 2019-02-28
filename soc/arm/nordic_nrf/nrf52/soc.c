@@ -15,6 +15,8 @@
 #include <kernel.h>
 #include <init.h>
 #include <cortex_m/exc.h>
+#include <nrfx.h>
+#include <soc/nrfx_coredep.h>
 
 #ifdef CONFIG_RUNTIME_NMI
 extern void _NmiInit(void);
@@ -35,6 +37,10 @@ extern void _NmiInit(void);
 
 #include <nrf.h>
 #include <hal/nrf_power.h>
+
+#define LOG_LEVEL CONFIG_SOC_LOG_LEVEL
+#include <logging/log.h>
+LOG_MODULE_REGISTER(soc);
 
 static int nordicsemi_nrf52_init(struct device *arg)
 {
@@ -65,6 +71,11 @@ static int nordicsemi_nrf52_init(struct device *arg)
 	irq_unlock(key);
 
 	return 0;
+}
+
+void z_arch_busy_wait(u32_t time_us)
+{
+	nrfx_coredep_delay_us(time_us);
 }
 
 SYS_INIT(nordicsemi_nrf52_init, PRE_KERNEL_1, 0);

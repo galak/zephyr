@@ -6,6 +6,9 @@
 
 Provides common methods for logging messages to display to the user.'''
 
+from west import config
+
+import colorama
 import sys
 
 VERBOSE_NONE = 0
@@ -40,27 +43,63 @@ def dbg(*args, level=VERBOSE_NORMAL):
     print(*args)
 
 
-def inf(*args):
-    '''Print an informational message.'''
+def inf(*args, colorize=False):
+    '''Print an informational message.
+
+    colorize (default: False):
+      If True, the message is printed in bright green if stdout is a terminal.
+    '''
+
+    if not config.use_colors():
+        colorize = False
+
+    # This approach colorizes any sep= and end= text too, as expected.
+    #
+    # colorama automatically strips the ANSI escapes when stdout isn't a
+    # terminal (by wrapping sys.stdout).
+    if colorize:
+        print(colorama.Fore.LIGHTGREEN_EX, end='')
+
     print(*args)
+
+    if colorize:
+        _reset_colors(sys.stdout)
 
 
 def wrn(*args):
     '''Print a warning.'''
-    print('warning:', end=' ', file=sys.stderr, flush=False)
+
+    if config.use_colors():
+        print(colorama.Fore.LIGHTRED_EX, end='', file=sys.stderr)
+
+    print('WARNING: ', end='', file=sys.stderr)
     print(*args, file=sys.stderr)
+
+    if config.use_colors():
+        _reset_colors(sys.stderr)
 
 
 def err(*args, fatal=False):
     '''Print an error.'''
-    if fatal:
-        print('fatal', end=' ', file=sys.stderr, flush=False)
-    print('error:', end=' ', file=sys.stderr, flush=False)
+
+    if config.use_colors():
+        print(colorama.Fore.LIGHTRED_EX, end='', file=sys.stderr)
+
+    print('FATAL ERROR: ' if fatal else 'ERROR: ', end='', file=sys.stderr)
     print(*args, file=sys.stderr)
+
+    if config.use_colors():
+        _reset_colors(sys.stderr)
 
 
 def die(*args, exit_code=1):
     '''Print a fatal error, and abort with the given exit code.'''
-    print('fatal error:', end=' ', file=sys.stderr, flush=False)
-    print(*args, file=sys.stderr)
+    err(*args, fatal=True)
     sys.exit(exit_code)
+
+
+def _reset_colors(file):
+    # The flush=True avoids issues with unrelated output from commands (usually
+    # Git) becoming colorized, due to the final attribute reset ANSI escape
+    # getting line-buffered
+    print(colorama.Style.RESET_ALL, end='', file=file, flush=True)

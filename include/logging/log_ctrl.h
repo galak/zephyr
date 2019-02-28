@@ -16,6 +16,7 @@ extern "C" {
 /**
  * @brief Logger
  * @defgroup logger Logger system
+ * @ingroup logging
  * @{
  * @}
  */
@@ -64,9 +65,11 @@ void log_thread_set(k_tid_t process_tid);
 int log_set_timestamp_func(timestamp_get_t timestamp_getter, u32_t freq);
 
 /**
- * @brief Switch logger subsystem to panic mode.
+ * @brief Switch the logger subsystem to the panic mode.
  *
- * @details On panic logger subsystem informs all backends about panic mode.
+ * Returns immediately if the logger is already in the panic mode.
+ *
+ * @details On panic the logger subsystem informs all backends about panic mode.
  *          Backends must switch to blocking mode or halt. All pending logs
  *          are flushed after switching to panic mode. In panic mode, all log
  *          messages must be processed in the context of the call.
@@ -104,7 +107,7 @@ u32_t log_src_cnt_get(u32_t domain_id);
  * @param domain_id Domain ID.
  * @param src_id    Source ID.
  *
- * @return Source name.
+ * @return Source name or NULL if invalid arguments.
  */
 const char *log_source_name_get(u32_t domain_id, u32_t src_id);
 
@@ -132,15 +135,18 @@ u32_t log_filter_get(struct log_backend const *const backend,
 /**
  * @brief Set filter on given source for the provided backend.
  *
- * @param backend	Backend instance.
+ * @param backend	Backend instance. NULL for all backends.
  * @param domain_id	ID of the domain.
  * @param src_id	Source (module or instance) ID.
  * @param level		Severity level.
+ *
+ * @return Actual level set which may be limited by compiled level. If filter
+ *	   was set for all backends then maximal level that was set is returned.
  */
-void log_filter_set(struct log_backend const *const backend,
-		    u32_t domain_id,
-		    u32_t src_id,
-		    u32_t level);
+u32_t log_filter_set(struct log_backend const *const backend,
+		     u32_t domain_id,
+		     u32_t src_id,
+		     u32_t level);
 
 /**
  *

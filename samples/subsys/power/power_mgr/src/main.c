@@ -9,7 +9,6 @@
 #include <soc_power.h>
 #include <misc/printk.h>
 #include <string.h>
-#include <board.h>
 #include <device.h>
 #include <gpio.h>
 
@@ -32,7 +31,7 @@ void sys_pm_notify_lps_entry(enum power_states state)
 
 void sys_pm_notify_lps_exit(enum power_states state)
 {
-	printk("Entering Low Power state (%d)\n", state);
+	printk("Exiting Low Power state (%d)\n", state);
 }
 
 /* Application main Thread */

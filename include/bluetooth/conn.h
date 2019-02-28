@@ -100,6 +100,18 @@ struct bt_conn *bt_conn_lookup_addr_le(u8_t id, const bt_addr_le_t *peer);
  */
 const bt_addr_le_t *bt_conn_get_dst(const struct bt_conn *conn);
 
+/** @brief Get array index of a connection
+ *
+ *  This function is used to map bt_conn to index of an array of
+ *  connections. The array has CONFIG_BT_MAX_CONN elements.
+ *
+ *  @param conn Connection object.
+ *
+ *  @return Index of the connection object.
+ *  The range of the returned value is 0..CONFIG_BT_MAX_CONN-1
+ */
+u8_t bt_conn_index(struct bt_conn *conn);
+
 /** Connection Type */
 enum {
 	/** LE Connection Type */
@@ -112,8 +124,8 @@ enum {
 
 /** LE Connection Info Structure */
 struct bt_conn_le_info {
-	const bt_addr_le_t *src; /** Source Address */
-	const bt_addr_le_t *dst; /** Destination Address */
+	const bt_addr_le_t *src; /** Source (Local) Address */
+	const bt_addr_le_t *dst; /** Destination (Remote) Address */
 	u16_t interval; /** Connection interval */
 	u16_t latency; /** Connection slave latency */
 	u16_t timeout; /** Connection supervision timeout */
@@ -121,7 +133,7 @@ struct bt_conn_le_info {
 
 /** BR/EDR Connection Info Structure */
 struct bt_conn_br_info {
-	const bt_addr_t *dst; /** Destination BR/EDR address */
+	const bt_addr_t *dst; /** Destination (Remote) BR/EDR address */
 };
 
 /** Connection role (master or slave) */
@@ -203,13 +215,15 @@ struct bt_conn *bt_conn_create_le(const bt_addr_le_t *peer,
  *  Every time the device loses the connection with peer, this connection
  *  will be re-established if connectable advertisement from peer is received.
  *
+ *  Note: Auto connect is disabled during explicit scanning.
+ *
  *  @param addr Remote Bluetooth address.
  *  @param param If non-NULL, auto connect is enabled with the given
  *  parameters. If NULL, auto connect is disabled.
  *
  *  @return Zero on success or error code otherwise.
  */
-int bt_le_set_auto_conn(bt_addr_le_t *addr,
+int bt_le_set_auto_conn(const bt_addr_le_t *addr,
 			const struct bt_le_conn_param *param);
 
 /** @brief Initiate directed advertising to a remote device
@@ -385,6 +399,18 @@ struct bt_conn_cb {
  *  @param cb Callback struct.
  */
 void bt_conn_cb_register(struct bt_conn_cb *cb);
+
+/** Enable/disable bonding.
+ *
+ *  Set/clear the Bonding flag in the Authentication Requirements of
+ *  SMP Pairing Request/Response data.
+ *  The initial value of this flag depends on BT_BONDABLE Kconfig setting.
+ *  For the vast majority of applications calling this function shouldn't be
+ *  needed.
+ *
+ *  @param enable Value allowing/disallowing to be bondable.
+ */
+void bt_set_bondable(bool enable);
 
 /** @def BT_PASSKEY_INVALID
  *

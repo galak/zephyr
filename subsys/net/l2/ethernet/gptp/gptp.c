@@ -4,10 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if defined(CONFIG_NET_DEBUG_GPTP)
-#define SYS_LOG_DOMAIN "net/gptp"
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_gptp, CONFIG_NET_GPTP_LOG_LEVEL);
 
 #include <net/net_pkt.h>
 #include <ptp_clock.h>
@@ -88,6 +86,10 @@ static void gptp_compute_clock_identity(int port)
 	}
 }
 
+/* Note that we do not use log_strdup() here when printing msg as currently the
+ * msg variable is always a const string that is not allocated from the stack.
+ * If this changes at some point, then add log_strdup(msg) here.
+ */
 #define PRINT_INFO(msg, hdr, pkt)				\
 	NET_DBG("Received %s seq %d pkt %p", msg,		\
 		ntohs(hdr->sequence_id), pkt)			\
@@ -374,17 +376,22 @@ static void gptp_init_clock_ds(void)
 	/* Compute the clock identity from the first port MAC address. */
 	gptp_compute_clock_identity(GPTP_PORT_START);
 
-	/* XXX GrandMaster capability is not supported. */
-	default_ds->gm_capable = false;
-	default_ds->clk_quality.clock_class = GPTP_CLASS_SLAVE_ONLY;
+	default_ds->gm_capable = IS_ENABLED(CONFIG_NET_GPTP_GM_CAPABLE);
+	default_ds->clk_quality.clock_class = GPTP_CLASS_OTHER;
 	default_ds->clk_quality.clock_accuracy =
-		GPTP_CLOCK_ACCURACY_UNKNOWN;
+		CONFIG_NET_GPTP_CLOCK_ACCURACY;
 	default_ds->clk_quality.offset_scaled_log_var =
 		GPTP_OFFSET_SCALED_LOG_VAR_UNKNOWN;
-	default_ds->priority1 = GPTP_PRIORITY1_NON_GM_CAPABLE;
+
+	if (default_ds->gm_capable) {
+		default_ds->priority1 = GPTP_PRIORITY1_GM_CAPABLE;
+	} else {
+		default_ds->priority1 = GPTP_PRIORITY1_NON_GM_CAPABLE;
+	}
+
 	default_ds->priority2 = GPTP_PRIORITY2_DEFAULT;
 
-	default_ds->cur_utc_offset = 37; /* Current leap seconds TAI - UTC */
+	default_ds->cur_utc_offset = 37U; /* Current leap seconds TAI - UTC */
 	default_ds->flags.all = 0;
 	default_ds->flags.octets[1] = GPTP_FLAG_TIME_TRACEABLE;
 	default_ds->time_source = GPTP_TS_INTERNAL_OSCILLATOR;
@@ -415,7 +422,7 @@ static void gptp_init_clock_ds(void)
 	/* Initialize properties data set. */
 
 	/* TODO: Get accurate values for below. From the GM. */
-	prop_ds->cur_utc_offset = 37; /* Current leap seconds TAI - UTC */
+	prop_ds->cur_utc_offset = 37U; /* Current leap seconds TAI - UTC */
 	prop_ds->cur_utc_offset_valid = false;
 	prop_ds->leap59 = false;
 	prop_ds->leap61 = false;
@@ -427,6 +434,8 @@ static void gptp_init_clock_ds(void)
 	global_ds->sys_flags.all = default_ds->flags.all;
 	global_ds->sys_current_utc_offset = default_ds->cur_utc_offset;
 	global_ds->sys_time_source = default_ds->time_source;
+	global_ds->clk_master_sync_itv =
+		NSEC_PER_SEC * GPTP_POW2(CONFIG_NET_GPTP_INIT_LOG_SYNC_ITV);
 }
 
 static void gptp_init_port_ds(int port)
@@ -463,7 +472,7 @@ static void gptp_init_port_ds(int port)
 	port_ds->ini_log_half_sync_itv = CONFIG_NET_GPTP_INIT_LOG_SYNC_ITV - 1;
 	port_ds->cur_log_half_sync_itv = port_ds->ini_log_half_sync_itv;
 	port_ds->sync_receipt_timeout = CONFIG_NET_GPTP_SYNC_RECEIPT_TIMEOUT;
-	port_ds->sync_receipt_timeout_time_itv = 10000000; /* 10ms */
+	port_ds->sync_receipt_timeout_time_itv = 10000000U; /* 10ms */
 
 	port_ds->ini_log_pdelay_req_itv =
 		CONFIG_NET_GPTP_INIT_LOG_PDELAY_REQ_ITV;
@@ -895,6 +904,7 @@ static void init_ports(void)
 			      K_THREAD_STACK_SIZEOF(gptp_stack),
 			      (k_thread_entry_t)gptp_thread,
 			      NULL, NULL, NULL, K_PRIO_COOP(5), 0, 0);
+	k_thread_name_set(&gptp_thread_data, "gptp");
 }
 
 #if defined(CONFIG_NET_GPTP_VLAN)
@@ -1003,7 +1013,7 @@ static void setup_vlan_events_listener(void)
 
 void net_gptp_init(void)
 {
-	gptp_domain.default_ds.nb_ports = 0;
+	gptp_domain.default_ds.nb_ports = 0U;
 
 #if defined(CONFIG_NET_GPTP_VLAN)
 	/* If user has enabled gPTP over VLAN support, then we start gPTP

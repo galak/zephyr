@@ -1,10 +1,11 @@
 common:
   arch_exclude: xtensa
   min_ram: 32
-  tags: core
+  tags: kernel
 tests:
   kernel.common.errno:
-    tags: core
+    tags: kernel
   kernel.common.errno.newlib:
+    platform_exclude: qemu_x86_64
     extra_configs:
       - CONFIG_NEWLIB_LIBC=y

@@ -4,15 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if defined(CONFIG_NET_DEBUG_SOCKETS)
-#define SYS_LOG_DOMAIN "net/sock"
-#define NET_LOG_ENABLED 1
-#endif
-
 /* libc headers */
 #include <stdlib.h>
 
 /* Zephyr headers */
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_sock_addr, CONFIG_NET_SOCKETS_LOG_LEVEL);
+
 #include <kernel.h>
 #include <net/socket.h>
 #include <syscall_handler.h>
@@ -105,7 +103,7 @@ int _impl_z_zsock_getaddrinfo_internal(const char *host, const char *service,
 	}
 
 	ai_state.hints = hints;
-	ai_state.idx = 0;
+	ai_state.idx = 0U;
 	ai_state.port = htons(port);
 	ai_state.ai_arr = res;
 	k_sem_init(&ai_state.sem, 0, UINT_MAX);

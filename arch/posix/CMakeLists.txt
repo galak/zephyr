@@ -1,5 +1,3 @@
-zephyr_cc_option_ifdef(CONFIG_LTO -flto)
-
 zephyr_compile_options(
   -fno-freestanding
   -m32
@@ -8,6 +6,8 @@ zephyr_compile_options(
   ${ARCH_FLAG}
   -include ${ZEPHYR_BASE}/arch/posix/include/posix_cheats.h
   )
+
+zephyr_include_directories(${BOARD_DIR})
 
 zephyr_compile_options_ifdef(CONFIG_COVERAGE
   -fprofile-arcs
@@ -23,7 +23,7 @@ if (CONFIG_ASAN)
 	zephyr_ld_options(-fsanitize=address)
 endif ()
 
-zephyr_compile_definitions(_POSIX_C_SOURCE=200809 _XOPEN_SOURCE _XOPEN_SOURCE_EXTENDED)
+zephyr_compile_definitions(_POSIX_C_SOURCE=200809 _XOPEN_SOURCE=600 _XOPEN_SOURCE_EXTENDED)
 
 zephyr_ld_options(
   -ldl

@@ -6,6 +6,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_test, CONFIG_NET_CONTEXT_LOG_LEVEL);
+
 #include <zephyr/types.h>
 #include <ztest.h>
 #include <stdbool.h>
@@ -18,6 +21,7 @@
 #include <tc_util.h>
 
 #include <net/ethernet.h>
+#include <net/dummy.h>
 #include <net/buf.h>
 #include <net/net_ip.h>
 #include <net/net_if.h>
@@ -26,7 +30,7 @@
 
 #include "net_private.h"
 
-#if defined(CONFIG_NET_DEBUG_CONTEXT)
+#if defined(CONFIG_NET_CONTEXT_LOG_LEVEL_DBG)
 #define DBG(fmt, ...) printk(fmt, ##__VA_ARGS__)
 #else
 #define DBG(fmt, ...)
@@ -965,7 +969,7 @@ static void net_context_iface_init(struct net_if *iface)
 			     NET_LINK_ETHERNET);
 }
 
-static int tester_send(struct net_if *iface, struct net_pkt *pkt)
+static int tester_send(struct device *dev, struct net_pkt *pkt)
 {
 	struct net_udp_hdr hdr, *udp_hdr;
 
@@ -1016,10 +1020,15 @@ static int tester_send(struct net_if *iface, struct net_pkt *pkt)
 		udp_hdr->dst_port = port;
 		net_udp_set_hdr(pkt, udp_hdr);
 
-		if (net_recv_data(iface, pkt) < 0) {
+		if (net_recv_data(net_pkt_iface(pkt), pkt) < 0) {
 			TC_ERROR("Data receive failed.");
 			goto out;
 		}
+
+		/* L2 or net_if will unref the pkt, but we are pushing it
+		 * to rx path, so let's reference it or it will be freed.
+		 */
+		net_pkt_ref(pkt);
 
 		timeout_token = 0;
 
@@ -1027,8 +1036,6 @@ static int tester_send(struct net_if *iface, struct net_pkt *pkt)
 	}
 
 out:
-	net_pkt_unref(pkt);
-
 	if (data_failure) {
 		test_failed = true;
 	}
@@ -1038,8 +1045,8 @@ out:
 
 struct net_context_test net_context_data;
 
-static struct net_if_api net_context_if_api = {
-	.init = net_context_iface_init,
+static struct dummy_api net_context_if_api = {
+	.iface_api.init = net_context_iface_init,
 	.send = tester_send,
 };
 

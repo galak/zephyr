@@ -8,7 +8,6 @@
 #include <string.h>
 #include <misc/printk.h>
 #include <logging/log_ctrl.h>
-#include <soc.h>
 #include "sample_instance.h"
 #include "sample_module.h"
 #include "ext_log_system.h"
@@ -28,6 +27,10 @@ SAMPLE_INSTANCE_DEFINE(inst1);
 
 #define INST2_NAME STRINGIFY(SAMPLE_INSTANCE_NAME.inst2)
 SAMPLE_INSTANCE_DEFINE(inst2);
+
+#if !defined(NRF_RTC1) && defined(CONFIG_SOC_FAMILY_NRF)
+#include <soc.h>
+#endif
 
 static u32_t timestamp_get(void)
 {
@@ -78,6 +81,7 @@ static void module_logging_showcase(void)
 	printk("Module logging showcase.\n");
 
 	sample_module_func();
+	inline_func();
 
 	if (IS_ENABLED(CONFIG_LOG_RUNTIME_FILTERING)) {
 		printk("Disabling logging in the %s module\n",
@@ -108,7 +112,9 @@ static void instance_logging_showcase(void)
 {
 	printk("Instance level logging showcase.\n");
 
+	sample_instance_inline_call(&inst1);
 	sample_instance_call(&inst1);
+	sample_instance_inline_call(&inst2);
 	sample_instance_call(&inst2);
 
 	if (IS_ENABLED(CONFIG_LOG_RUNTIME_FILTERING)) {
@@ -118,7 +124,9 @@ static void instance_logging_showcase(void)
 		log_filter_set(NULL, 0,
 			       log_source_id_get(INST1_NAME), LOG_LEVEL_WRN);
 
+		sample_instance_inline_call(&inst1);
 		sample_instance_call(&inst1);
+		sample_instance_inline_call(&inst2);
 		sample_instance_call(&inst2);
 
 		printk("Disabling logging on both instances.\n");
@@ -131,7 +139,9 @@ static void instance_logging_showcase(void)
 			       log_source_id_get(INST2_NAME),
 			       LOG_LEVEL_NONE);
 
+		sample_instance_inline_call(&inst1);
 		sample_instance_call(&inst1);
+		sample_instance_inline_call(&inst2);
 		sample_instance_call(&inst2);
 
 		printk("Function call on both instances with logging disabled.\n");
@@ -152,6 +162,24 @@ static void severity_levels_showcase(void)
 }
 
 /**
+ * @brief Function demonstrates how transient strings can be logged.
+ *
+ * Logger ensures that allocated buffers are freed when log message is
+ * processed.
+ */
+static void log_strdup_showcase(void)
+{
+	char transient_str[] = "transient_string";
+
+	printk("String logging showcase.\n");
+
+	LOG_INF("Logging transient string:%s", log_strdup(transient_str));
+
+	/* Overwrite transient string to show that the logger has a copy. */
+	transient_str[0] = '\0';
+}
+
+/**
  * @brief Function demonstrates how fast data can be logged.
  *
  * Messages are logged and counted in a loop for 2 ticks (same clock source as
@@ -163,8 +191,8 @@ static void performance_showcase(void)
 	volatile u32_t current_timestamp;
 	volatile u32_t start_timestamp;
 	u32_t per_sec;
-	u32_t cnt = 0;
-	u32_t window = 2;
+	u32_t cnt = 0U;
+	u32_t window = 2U;
 
 	printk("Logging performance showcase.\n");
 
@@ -233,6 +261,10 @@ void log_demo_thread(void *dummy1, void *dummy2, void *dummy3)
 		       CONFIG_LOG_DEFAULT_LEVEL);
 
 	wait_on_log_flushed();
+
+	severity_levels_showcase();
+
+	log_strdup_showcase();
 
 	severity_levels_showcase();
 

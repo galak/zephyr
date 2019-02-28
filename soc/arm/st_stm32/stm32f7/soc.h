@@ -17,10 +17,6 @@
 #ifndef _STM32F7_SOC_H_
 #define _STM32F7_SOC_H_
 
-#define GPIO_REG_SIZE         0x400
-/* base address for where GPIO registers start */
-#define GPIO_PORTS_BASE       (GPIOA_BASE)
-
 #ifndef _ASMLANGUAGE
 
 #include <stm32f7xx.h>
@@ -46,8 +42,22 @@
 #include <stm32f7xx_ll_i2c.h>
 #endif
 
+#if defined(CONFIG_SPI_STM32) || defined(CONFIG_I2S_STM32)
+#include <stm32f7xx_ll_spi.h>
+#endif
+
 #ifdef CONFIG_ENTROPY_STM32_RNG
 #include <stm32f7xx_ll_rng.h>
+#endif
+
+#ifdef CONFIG_RTC_STM32
+#include <stm32f7xx_ll_rtc.h>
+#include <stm32f7xx_ll_exti.h>
+#include <stm32f7xx_ll_pwr.h>
+#endif
+
+#ifdef CONFIG_GPIO_STM32
+#include <stm32f7xx_ll_gpio.h>
 #endif
 
 #endif /* !_ASMLANGUAGE */

@@ -15,6 +15,26 @@ zephyr_sources_ifdef(
   )
 
 zephyr_sources_ifdef(
+  CONFIG_LOG_CMDS
+  log_cmds.c
+  )
+
+zephyr_sources_ifdef(
   CONFIG_LOG_BACKEND_NATIVE_POSIX
   log_backend_native_posix.c
   )
+
+zephyr_sources_ifdef(
+  CONFIG_LOG_BACKEND_NET
+  log_backend_net.c
+  )
+
+zephyr_sources_ifdef(
+  CONFIG_LOG_BACKEND_RTT
+  log_backend_rtt.c
+)
+
+zephyr_sources_ifdef(
+  CONFIG_LOG_BACKEND_SWO
+  log_backend_swo.c
+)

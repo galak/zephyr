@@ -5,13 +5,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <board.h>
 #include <gpio.h>
 
-#include "common.h"
+#include "app_gpio.h"
+
 #include "ble_mesh.h"
-#include "publisher.h"
 #include "device_composition.h"
+#include "publisher.h"
 
 #define ONOFF
 #define GENERIC_LEVEL
@@ -41,7 +41,7 @@ void randomize_publishers_TID(void)
 
 static u32_t button_read(struct device *port, u32_t pin)
 {
-	u32_t val = 0;
+	u32_t val = 0U;
 
 	gpio_pin_read(port, pin, &val);
 	return val;
@@ -72,7 +72,7 @@ void publish(struct k_work *work)
 		err = bt_mesh_model_publish(&root_models[3]);
 #elif defined(VND_MODEL_TEST)
 		bt_mesh_model_msg_init(vnd_models[0].pub->msg,
-				       BT_MESH_MODEL_OP_3(0x02, CID_ZEPHYR));
+				       BT_MESH_MODEL_OP_3(0x03, CID_ZEPHYR));
 		net_buf_simple_add_le16(vnd_models[0].pub->msg, 0x0001);
 		net_buf_simple_add_u8(vnd_models[0].pub->msg, tid_vnd++);
 		err = bt_mesh_model_publish(&vnd_models[0]);
@@ -94,7 +94,7 @@ void publish(struct k_work *work)
 		err = bt_mesh_model_publish(&root_models[3]);
 #elif defined(VND_MODEL_TEST)
 		bt_mesh_model_msg_init(vnd_models[0].pub->msg,
-				       BT_MESH_MODEL_OP_3(0x02, CID_ZEPHYR));
+				       BT_MESH_MODEL_OP_3(0x03, CID_ZEPHYR));
 		net_buf_simple_add_le16(vnd_models[0].pub->msg, 0x0000);
 		net_buf_simple_add_u8(vnd_models[0].pub->msg, tid_vnd++);
 		err = bt_mesh_model_publish(&vnd_models[0]);

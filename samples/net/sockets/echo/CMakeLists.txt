@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8.2)
+cmake_minimum_required(VERSION 3.13.1)
 macro(set_conf_file)
   if(EXISTS ${APPLICATION_SOURCE_DIR}/prj_${BOARD}.conf)
     set(CONF_FILE "${APPLICATION_SOURCE_DIR}/prj_${BOARD}.conf")
@@ -11,7 +11,7 @@ macro(set_conf_file)
 endmacro()
 
 include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
-project(NONE)
+project(sockets_echo)
 
 FILE(GLOB app_sources src/*.c)
 target_sources(app PRIVATE ${app_sources})

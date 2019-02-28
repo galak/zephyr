@@ -4,15 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if defined(CONFIG_NET_DEBUG_HTTP)
-#if defined(CONFIG_HTTPS)
-#define SYS_LOG_DOMAIN "https/client"
-#else
-#define SYS_LOG_DOMAIN "http/client"
-#endif
-#define NET_SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_DECLARE(net_http, CONFIG_HTTP_LOG_LEVEL);
 
 #include <zephyr.h>
 #include <string.h>
@@ -168,7 +161,6 @@ out:
 	return ret;
 }
 
-#if defined(CONFIG_NET_DEBUG_HTTP)
 static void sprint_addr(char *buf, int len,
 			sa_family_t family,
 			struct sockaddr *addr)
@@ -181,27 +173,29 @@ static void sprint_addr(char *buf, int len,
 		NET_DBG("Invalid protocol family");
 	}
 }
-#endif
 
 static inline void print_info(struct http_ctx *ctx,
 			      enum http_method method)
 {
-#if defined(CONFIG_NET_DEBUG_HTTP)
-	char local[NET_IPV6_ADDR_LEN];
-	char remote[NET_IPV6_ADDR_LEN];
+	if (CONFIG_HTTP_LOG_LEVEL >= LOG_LEVEL_INF) {
+		char local[NET_IPV6_ADDR_LEN];
+		char remote[NET_IPV6_ADDR_LEN];
 
-	sprint_addr(local, NET_IPV6_ADDR_LEN,
-		    ctx->app_ctx.default_ctx->local.sa_family,
-		    &ctx->app_ctx.default_ctx->local);
+		sprint_addr(local, NET_IPV6_ADDR_LEN,
+			    ctx->app_ctx.default_ctx->local.sa_family,
+			    &ctx->app_ctx.default_ctx->local);
 
-	sprint_addr(remote, NET_IPV6_ADDR_LEN,
-		    ctx->app_ctx.default_ctx->remote.sa_family,
-		    &ctx->app_ctx.default_ctx->remote);
+		sprint_addr(remote, NET_IPV6_ADDR_LEN,
+			    ctx->app_ctx.default_ctx->remote.sa_family,
+			    &ctx->app_ctx.default_ctx->remote);
 
-	NET_DBG("HTTP %s (%s) %s -> %s port %d",
-		http_method_str(method), ctx->http.req.host, local, remote,
-		ntohs(net_sin(&ctx->app_ctx.default_ctx->remote)->sin_port));
-#endif
+		NET_DBG("HTTP %s (%s) %s -> %s port %d",
+			http_method_str(method),
+			log_strdup(ctx->http.req.host), log_strdup(local),
+			log_strdup(remote),
+			ntohs(net_sin(&ctx->app_ctx.default_ctx->remote)->
+			      sin_port));
+	}
 }
 
 int http_client_send_req(struct http_ctx *ctx,
@@ -273,21 +267,21 @@ out:
 
 static void print_header_field(size_t len, const char *str)
 {
-#if defined(CONFIG_NET_DEBUG_HTTP)
+	if (CONFIG_HTTP_LOG_LEVEL >= LOG_LEVEL_INF) {
 #define MAX_OUTPUT_LEN 128
-	char output[MAX_OUTPUT_LEN];
+		char output[MAX_OUTPUT_LEN];
 
-	/* The value of len does not count \0 so we need to increase it
-	 * by one.
-	 */
-	if ((len + 1) > sizeof(output)) {
-		len = sizeof(output) - 1;
+		/* The value of len does not count \0 so we need to increase it
+		 * by one.
+		 */
+		if ((len + 1) > sizeof(output)) {
+			len = sizeof(output) - 1;
+		}
+
+		snprintk(output, len + 1, "%s", str);
+
+		NET_DBG("[%zd] %s", len, log_strdup(output));
 	}
-
-	snprintk(output, len + 1, "%s", str);
-
-	NET_DBG("[%zd] %s", len, output);
-#endif
 }
 
 static int on_url(struct http_parser *parser, const char *at, size_t length)
@@ -310,7 +304,8 @@ static int on_status(struct http_parser *parser, const char *at, size_t length)
 	memcpy(ctx->http.rsp.http_status, at, len);
 	ctx->http.rsp.http_status[len] = 0;
 
-	NET_DBG("HTTP response status %s", ctx->http.rsp.http_status);
+	NET_DBG("HTTP response status %s",
+		log_strdup(ctx->http.rsp.http_status));
 
 	return 0;
 }
@@ -435,16 +430,15 @@ static int on_headers_complete(struct http_parser *parser)
 
 static int on_message_begin(struct http_parser *parser)
 {
-#if defined(CONFIG_NET_DEBUG_HTTP) && (CONFIG_SYS_LOG_NET_LEVEL > 2)
-	struct http_ctx *ctx = CONTAINER_OF(parser,
-					    struct http_ctx,
-					    http.parser);
+	if (CONFIG_HTTP_LOG_LEVEL >= LOG_LEVEL_INF) {
+		struct http_ctx *ctx = CONTAINER_OF(parser,
+						    struct http_ctx,
+						    http.parser);
 
-	NET_DBG("-- HTTP %s response (headers) --",
-		http_method_str(ctx->http.req.method));
-#else
-	ARG_UNUSED(parser);
-#endif
+		NET_DBG("-- HTTP %s response (headers) --",
+			http_method_str(ctx->http.req.method));
+	}
+
 	return 0;
 }
 
@@ -494,7 +488,7 @@ static void http_received(struct net_app_ctx *app_ctx,
 {
 	struct http_ctx *ctx = user_data;
 	size_t start = ctx->http.rsp.data_len;
-	u16_t len = 0;
+	u16_t len = 0U;
 	struct net_buf *frag, *prev_frag = NULL;
 	size_t recv_len;
 	size_t pkt_len;
@@ -546,7 +540,7 @@ static void http_received(struct net_app_ctx *app_ctx,
 					    len);
 
 			ctx->http.rsp.data_len = 0;
-			len = 0;
+			len = 0U;
 			start = 0;
 		}
 

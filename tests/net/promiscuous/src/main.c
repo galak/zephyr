@@ -6,6 +6,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define NET_LOG_LEVEL CONFIG_NET_IF_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_test, NET_LOG_LEVEL);
+
 #include <zephyr/types.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -23,7 +28,7 @@
 #define NET_LOG_ENABLED 1
 #include "net_private.h"
 
-#if defined(CONFIG_NET_DEBUG_IF)
+#if NET_LOG_LEVEL >= LOG_LEVEL_DBG
 #define DBG(fmt, ...) printk(fmt, ##__VA_ARGS__)
 #else
 #define DBG(fmt, ...)
@@ -83,12 +88,11 @@ static void eth_fake_iface_init(struct net_if *iface)
 	ethernet_init(iface);
 }
 
-static int eth_fake_send(struct net_if *iface,
+static int eth_fake_send(struct device *dev,
 			 struct net_pkt *pkt)
 {
-	ARG_UNUSED(iface);
-
-	net_pkt_unref(pkt);
+	ARG_UNUSED(dev);
+	ARG_UNUSED(pkt);
 
 	return 0;
 }
@@ -123,10 +127,10 @@ static int eth_fake_set_config(struct device *dev,
 
 static struct ethernet_api eth_fake_api_funcs = {
 	.iface_api.init = eth_fake_iface_init,
-	.iface_api.send = eth_fake_send,
 
 	.get_capabilities = eth_fake_get_capabilities,
 	.set_config = eth_fake_set_config,
+	.send = eth_fake_send,
 };
 
 static int eth_fake_init(struct device *dev)
@@ -144,7 +148,7 @@ ETH_NET_DEVICE_INIT(eth_fake1, "eth_fake1", eth_fake_init, &eth_fake_data1,
 ETH_NET_DEVICE_INIT(eth_fake2, "eth_fake2", eth_fake_init, &eth_fake_data2,
 		    NULL, CONFIG_ETH_INIT_PRIORITY, &eth_fake_api_funcs, 1500);
 
-#if defined(CONFIG_NET_DEBUG_IF)
+#if NET_LOG_LEVEL >= LOG_LEVEL_DBG
 static const char *iface2str(struct net_if *iface)
 {
 	if (net_if_l2(iface) == &NET_L2_GET_NAME(ETHERNET)) {
@@ -341,7 +345,7 @@ static void _recv_data(struct net_if *iface, struct net_pkt **pkt)
 	static u8_t data[] = { 't', 'e', 's', 't', '\0' };
 	int ret;
 
-	*pkt = net_pkt_get_reserve_tx(0, K_FOREVER);
+	*pkt = net_pkt_get_reserve_tx(K_FOREVER);
 	net_pkt_set_iface(*pkt, iface);
 
 	net_pkt_append_all(*pkt, sizeof(data), data, K_FOREVER);

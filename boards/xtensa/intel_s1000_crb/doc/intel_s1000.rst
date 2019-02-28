@@ -1,7 +1,7 @@
 .. _Intel_S1000:
 
-Intel S1000
-###########
+Intel S1000 CRB
+###############
 
 Overview
 ********
@@ -12,6 +12,11 @@ cancel echoes, and reduce noise. It connects to a host processor chip via
 simple SPI and I2S interfaces, to the microphone array via I2S or PDM
 interfaces, and to speakers via I2S. In addition, it has an I2C interface
 for controlling platform components such as ADCs, DACs, CODECs and PMICs.
+
+.. image:: IoT-SpeechEnablKit-banner-image.png
+   :width: 442px
+   :align: center
+   :alt: Intel Speech Enabling Developer Kit
 
 The Intel S1000 contains the following:
 
@@ -45,6 +50,9 @@ The Intel S1000 contains the following:
   - Debug: UART up to 2.4 Mbaud/s
   - GPIO: 8 GPIOs with PWM output capability
 
+
+For more information refer to the `Intel Speech Enabling Developer Kit`_ page.
+
 System requirements
 *******************
 
@@ -58,8 +66,7 @@ In order to download the installer and the core configuration, users need to
 have a registered account at https://tensilicatools.com.
 
 The toolchain installer and the core configuration can be downloaded by following
-the links at
-https://tensilicatools.com/platform/intel-sue-creek
+the links at `Tensillica Tools for Sue Creek`_
 
 Select version RF-2016.4 and download the archive. The archive contains the installer
 "Xplorer-6.0.4-linux-installer.bin" and the core configuration "X6H3SUE_2016_4".
@@ -114,13 +121,16 @@ shell variable. Some more environment variables are also required (see below):
    export XTENSA_CORE=X6H3SUE_2016_4
    export XTENSA_SYSTEM=/opt/xtensa/XtDevTools/install/tools/RF-2016.4-linux/XtensaTools/config/
    export XTENSA_BUILD_PATHS=/opt/xtensa/XtDevTools/install/builds/
-   export XTENSA_OCD_PATH=/opt/Tensilica/xocd-12.0.4
+   export XTENSA_OCD_PATH=/opt/tensilica/xocd-12.0.4
+
+Programming and Debugging
+*************************
 
 Flashing
 ========
 
 The usual ``flash`` target will work with the ``intel_s1000_crb`` board
-configuration. Here is an example for the :ref:`hello_world`
+configuration using JTAG. Here is an example for the :ref:`hello_world`
 application.
 
 .. zephyr-app-commands::
@@ -172,7 +182,8 @@ settings in minicom and can be verified by pressing Ctrl-A Z P.
 Using JTAG
 ==========
 
-For debugging, you can use a flyswatter2 to connect to the S1000 CRB.
+For debugging and flashing, you can use a flyswatter2 to connect to the Intel
+S1000 CRB.
 The pinouts for flyswatter2 and the corresponding pinouts for CRB are
 shown below. Note that pin 6 on CRB is left unconnected.
 
@@ -207,9 +218,10 @@ However, we need to short 2 pins on Host Connector J3 via a 3.3k resistor
 (simple shorting without the resistor will also do) for debugging to work.
 Those 2 pins are Pin5 HOST_RST_N_LT_R) and Pin21 (+V_HOST_3P3_1P8).
 
-References
-**********
-
 .. target-notes::
 
 .. _`FT232 UART`: https://www.amazon.com/FT232RL-Serial-Converter-Adapter-Arduino/dp/B06XDH2VK9
+
+.. _Tensillica Tools for Sue Creek: https://tensilicatools.com/platform/intel-sue-creek
+
+.. _Intel Speech Enabling Developer Kit: https://software.intel.com/en-us/iot/speech-enabling-dev-kit

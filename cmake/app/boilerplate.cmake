@@ -14,20 +14,7 @@
 # modified by the entry point ${APPLICATION_SOURCE_DIR}/CMakeLists.txt
 # that was specified when cmake was called.
 
-# Determine if we are using MSYS.
-#
-# We don't use project() because it would take some time to rewrite
-# the build scripts to be compatible with everything project() does.
-execute_process(
-  COMMAND
-  uname
-  OUTPUT_VARIABLE uname_output
-  )
-if(uname_output MATCHES "MSYS")
-  set(MSYS 1)
-endif()
-
-# CMake version 3.8.2 is the real minimum supported version.
+# CMake version 3.13.1 is the real minimum supported version.
 #
 # Unfortunately CMake requires the toplevel CMakeLists.txt file to
 # define the required version, not even invoking it from an included
@@ -36,9 +23,17 @@ endif()
 #
 # Under these restraints we use a second 'cmake_minimum_required'
 # invocation in every toplevel CMakeLists.txt.
-cmake_minimum_required(VERSION 3.8.2)
+cmake_minimum_required(VERSION 3.13.1)
 
+# CMP0002: "Logical target names must be globally unique"
 cmake_policy(SET CMP0002 NEW)
+
+if(NOT (${CMAKE_VERSION} VERSION_LESS "3.13.0"))
+  # Use the old CMake behaviour until 3.13.x is required and the build
+  # scripts have been ported to the new behaviour.
+  # CMP0079: "target_link_libraries() allows use with targets in other directories"
+  cmake_policy(SET CMP0079 OLD)
+endif()
 
 define_property(GLOBAL PROPERTY ZEPHYR_LIBS
     BRIEF_DOCS "Global list of all Zephyr CMake libs that should be linked in"
@@ -63,7 +58,7 @@ set_property(GLOBAL PROPERTY GENERATED_KERNEL_OBJECT_FILES "")
 define_property(GLOBAL PROPERTY GENERATED_KERNEL_SOURCE_FILES
   BRIEF_DOCS "Source files that are generated after Zephyr has been linked once."
   FULL_DOCS "\
-Object files that are generated after Zephyr has been linked once.\
+Source files that are generated after Zephyr has been linked once.\
 May include isr_tables.c etc."
   )
 set_property(GLOBAL PROPERTY GENERATED_KERNEL_SOURCE_FILES "")
@@ -75,10 +70,12 @@ set(__build_dir ${CMAKE_CURRENT_BINARY_DIR}/zephyr)
 
 set(PROJECT_BINARY_DIR ${__build_dir})
 
+add_custom_target(code_data_relocation_target)
+
 # CMake's 'project' concept has proven to not be very useful for Zephyr
 # due in part to how Zephyr is organized and in part to it not fitting well
 # with cross compilation.
-# CMake therefore tries to rely as little as possible on project()
+# Zephyr therefore tries to rely as little as possible on project()
 # and its associated variables, e.g. PROJECT_SOURCE_DIR.
 # It is recommended to always use ZEPHYR_BASE instead of PROJECT_SOURCE_DIR
 # when trying to reference ENV${ZEPHYR_BASE}.
@@ -94,10 +91,22 @@ set(AUTOCONF_H ${__build_dir}/include/generated/autoconf.h)
 # Re-configure (Re-execute all CMakeLists.txt code) when autoconf.h changes
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${AUTOCONF_H})
 
+
+#
+# Import more CMake functions and macros
+#
+
+include(CheckCCompilerFlag)
+include(CheckCXXCompilerFlag)
 include(${ZEPHYR_BASE}/cmake/extensions.cmake)
+include(${ZEPHYR_BASE}/cmake/version.cmake)  # depends on hex.cmake
 
-find_package(PythonInterp 3.4)
+#
+# Find tools
+#
 
+include(${ZEPHYR_BASE}/cmake/python.cmake)
+include(${ZEPHYR_BASE}/cmake/git.cmake)  # depends on version.cmake
 include(${ZEPHYR_BASE}/cmake/ccache.cmake)
 
 if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_BINARY_DIR})
@@ -111,18 +120,6 @@ add_custom_target(
   COMMAND ${CMAKE_COMMAND} -P ${ZEPHYR_BASE}/cmake/pristine.cmake
   # Equivalent to rm -rf build/*
   )
-
-# Must be run before kconfig.cmake
-if(MSYS)
-  execute_process(
-    COMMAND
-    ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/check_host_is_ok.py
-    RESULT_VARIABLE ret
-    )
-  if(NOT "${ret}" STREQUAL "0")
-    message(FATAL_ERROR "command failed with return code: ${ret}")
-  endif()
-endif()
 
 # The BOARD can be set by 3 sources. Through environment variables,
 # through the cmake CLI, and through CMakeLists.txt.
@@ -189,12 +186,9 @@ message(STATUS "Selected BOARD ${BOARD}")
 # Store the selected board in the cache
 set(CACHED_BOARD ${BOARD} CACHE STRING "Selected board")
 
-# Use BOARD to search zephyr/boards/** for a _defconfig file,
-# e.g. zephyr/boards/arm/96b_carbon_nrf51/96b_carbon_nrf51_defconfig. When
-# found, use that path to infer the ARCH we are building for.
-if(NOT BOARD_ROOT)
-  set(BOARD_ROOT ${ZEPHYR_BASE})
-endif()
+# 'BOARD_ROOT' is a prioritized list of directories where boards may
+# be found. It always includes ${ZEPHYR_BASE} at the lowest priority.
+list(APPEND BOARD_ROOT ${ZEPHYR_BASE})
 
 if(NOT SOC_ROOT)
   set(SOC_DIR ${ZEPHYR_BASE}/soc)
@@ -202,13 +196,32 @@ else()
   set(SOC_DIR ${SOC_ROOT}/soc)
 endif()
 
-find_path(BOARD_DIR NAMES "${BOARD}_defconfig" PATHS ${BOARD_ROOT}/boards/*/* NO_DEFAULT_PATH)
+# Use BOARD to search for a '_defconfig' file.
+# e.g. zephyr/boards/arm/96b_carbon_nrf51/96b_carbon_nrf51_defconfig.
+# When found, use that path to infer the ARCH we are building for.
+foreach(root ${BOARD_ROOT})
+  # NB: find_path will return immediately if the output variable is
+  # already set
+  find_path(BOARD_DIR
+    NAMES ${BOARD}_defconfig
+    PATHS ${root}/boards/*/*
+    NO_DEFAULT_PATH
+    )
+  if(BOARD_DIR AND NOT (${root} STREQUAL ${ZEPHYR_BASE}))
+    set(USING_OUT_OF_TREE_BOARD 1)
+  endif()
+endforeach()
 
-assert_with_usage(BOARD_DIR "No board named '${BOARD}' found")
+if(NOT BOARD_DIR)
+  message("No board named '${BOARD}' found")
+  print_usage()
+  unset(CACHED_BOARD CACHE)
+  message(FATAL_ERROR "Invalid usage")
+endif()
 
-get_filename_component(BOARD_ARCH_DIR ${BOARD_DIR} DIRECTORY)
-get_filename_component(ARCH ${BOARD_ARCH_DIR} NAME)
-get_filename_component(BOARD_FAMILY ${BOARD_DIR} NAME)
+get_filename_component(BOARD_ARCH_DIR ${BOARD_DIR}      DIRECTORY)
+get_filename_component(BOARD_FAMILY   ${BOARD_DIR}      NAME)
+get_filename_component(ARCH           ${BOARD_ARCH_DIR} NAME)
 
 if(CONF_FILE)
   # CONF_FILE has either been specified on the cmake CLI or is already
@@ -252,20 +265,25 @@ DTC_OVERLAY_FILE=\"dts1.overlay dts2.overlay\"")
 set(CMAKE_C_COMPILER_FORCED   1)
 set(CMAKE_CXX_COMPILER_FORCED 1)
 
-include(${ZEPHYR_BASE}/cmake/version.cmake)
 include(${ZEPHYR_BASE}/cmake/host-tools.cmake)
+
+# DTS should be close to kconfig because CONFIG_ variables from
+# kconfig and dts should be available at the same time.
+#
+# The DT system uses a C preprocessor for it's code generation needs.
+# This creates an awkward chicken-and-egg problem, because we don't
+# always know exactly which toolchain the user needs until we know
+# more about the target, e.g. after DT and Kconfig.
+#
+# To resolve this we find "some" C toolchain, configure it generically
+# with the minimal amount of configuration needed to have it
+# preprocess DT sources, and then, after we have finished processing
+# both DT and Kconfig we complete the target-specific configuration,
+# and possibly change the toolchain.
+include(${ZEPHYR_BASE}/cmake/generic_toolchain.cmake)
 include(${ZEPHYR_BASE}/cmake/kconfig.cmake)
-include(${ZEPHYR_BASE}/cmake/toolchain.cmake)
 
-find_package(Git QUIET)
-if(GIT_FOUND)
-  execute_process(COMMAND ${GIT_EXECUTABLE} describe
-    WORKING_DIRECTORY ${ZEPHYR_BASE}
-    OUTPUT_VARIABLE BUILD_VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-endif()
-
-set(SOC_NAME ${CONFIG_SOC})
+set(SOC_NAME   ${CONFIG_SOC})
 set(SOC_SERIES ${CONFIG_SOC_SERIES})
 set(SOC_FAMILY ${CONFIG_SOC_FAMILY})
 
@@ -275,13 +293,9 @@ else()
   set(SOC_PATH ${SOC_FAMILY}/${SOC_SERIES})
 endif()
 
-
-# DTS should be run directly after kconfig because CONFIG_ variables
-# from kconfig and dts should be available at the same time. But
-# running DTS involves running the preprocessor, so we put it behind
-# toolchain. Meaning toolchain.cmake is the only component where
-# kconfig and dts variables aren't available at the same time.
 include(${ZEPHYR_BASE}/cmake/dts.cmake)
+
+include(${ZEPHYR_BASE}/cmake/target_toolchain.cmake)
 
 set(KERNEL_NAME ${CONFIG_KERNEL_BIN_NAME})
 
@@ -304,7 +318,34 @@ message(STATUS "Cache files will be written to: ${USER_CACHE_DIR}")
 
 include(${BOARD_DIR}/board.cmake OPTIONAL)
 
+# If we are using a suitable ethernet driver inside qemu, then these options
+# must be set, otherwise a zephyr instance cannot receive any network packets.
+# The Qemu supported ethernet driver should define CONFIG_ETH_NIC_MODEL
+# string that tells what nic model Qemu should use.
+if(CONFIG_QEMU_TARGET)
+  if(CONFIG_NET_QEMU_ETHERNET)
+    if(CONFIG_ETH_NIC_MODEL)
+      list(APPEND QEMU_FLAGS_${ARCH}
+        -nic tap,model=${CONFIG_ETH_NIC_MODEL},script=no,downscript=no,ifname=zeth
+      )
+    else()
+      message(FATAL_ERROR "
+        No Qemu ethernet driver configured!
+        Enable Qemu supported ethernet driver like e1000 at drivers/ethernet"
+      )
+    endif()
+  else()
+    list(APPEND QEMU_FLAGS_${ARCH}
+      -net none
+    )
+  endif()
+endif()
+
+# "app" is a CMake library containing all the application code and is
+# modified by the entry point ${APPLICATION_SOURCE_DIR}/CMakeLists.txt
+# that was specified when cmake was called.
 zephyr_library_named(app)
+set_property(TARGET app PROPERTY ARCHIVE_OUTPUT_DIRECTORY app)
 
 add_subdirectory(${ZEPHYR_BASE} ${__build_dir})
 
@@ -331,19 +372,10 @@ foreach(boilerplate_lib ${ZEPHYR_INTERFACE_LIBS_PROPERTY})
     )
 endforeach()
 
-
-if(NOT EXISTS ${ZEPHYR_BASE}/hide-defaults-note)
-    message(STATUS "\n\
-*******************************\n\
-*** NOTE TO KCONFIG AUTHORS ***\n\
-*******************************\n\
-\n\
-The behavior of Kconfig 'default' properties in Zephyr has changed. The \n\
-earliest default with a satisfied condition is now used, instead of the \n\
-last one. This is standard Kconfig behavior.\n\
-\n\
-See http://docs.zephyrproject.org/latest/porting/board_porting.html#old-zephyr-kconfig-behavior-for-defaults.\n\
-\n\
-To get rid of this note, create a file called 'hide-defaults-note' in the \n\
-Zephyr root directory. An empty file is fine.")
+if("${CMAKE_EXTRA_GENERATOR}" STREQUAL "Eclipse CDT4")
+  # Call the amendment function before .project and .cproject generation
+  # C and CXX includes, defines in .cproject without __cplusplus
+  # with project includes and defines
+  include(${ZEPHYR_BASE}/cmake/ide/eclipse_cdt4_generator_amendment.cmake)
+  eclipse_cdt4_generator_amendment(1)
 endif()

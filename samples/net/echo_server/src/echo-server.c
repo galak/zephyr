@@ -6,11 +6,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if 1
-#define SYS_LOG_DOMAIN "echo-server"
-#define NET_SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_echo_server_sample, LOG_LEVEL_DBG);
 
 #include <zephyr.h>
 #include <linker/sections.h>
@@ -19,7 +16,6 @@
 #include <net/net_pkt.h>
 #include <net/net_core.h>
 #include <net/net_context.h>
-
 #include <net/net_app.h>
 
 #include "common.h"
@@ -38,7 +34,7 @@ static struct k_sem quit_lock;
 void panic(const char *msg)
 {
 	if (msg) {
-		NET_ERR("%s", msg);
+		LOG_ERR("%s", msg);
 	}
 
 	for (;;) {
@@ -62,7 +58,7 @@ struct net_pkt *build_reply_pkt(const char *name,
 	int recv_len;
 	int ret;
 
-	NET_INFO("%s received %d bytes", name, net_pkt_appdatalen(pkt));
+	LOG_INF("%s received %d bytes", name, net_pkt_appdatalen(pkt));
 
 	if (net_pkt_appdatalen(pkt) == 0) {
 		return NULL;
@@ -97,7 +93,7 @@ struct net_pkt *build_reply_pkt(const char *name,
 
 	frag = net_pkt_copy_all(pkt, 0, BUF_TIMEOUT);
 	if (!frag) {
-		NET_ERR("Failed to copy all data");
+		LOG_ERR("Failed to copy all data");
 		net_pkt_unref(reply_pkt);
 		return NULL;
 	}
@@ -113,13 +109,15 @@ void pkt_sent(struct net_app_ctx *ctx,
 	     void *user_data)
 {
 	if (!status) {
-		NET_INFO("Sent %d bytes", POINTER_TO_UINT(user_data_send));
+		LOG_INF("Sent %d bytes", POINTER_TO_UINT(user_data_send));
 	}
 }
 
 static inline int init_app(void)
 {
 	k_sem_init(&quit_lock, 0, UINT_MAX);
+
+	init_vlan();
 
 	return 0;
 }
@@ -138,7 +136,7 @@ void main(void)
 
 	k_sem_take(&quit_lock, K_FOREVER);
 
-	NET_INFO("Stopping...");
+	LOG_INF("Stopping...");
 
 	if (IS_ENABLED(CONFIG_NET_TCP)) {
 		stop_tcp();

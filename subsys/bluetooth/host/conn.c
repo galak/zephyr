@@ -24,6 +24,7 @@
 #include <bluetooth/att.h>
 
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_CONN)
+#define LOG_MODULE_NAME bt_conn
 #include "common/log.h"
 
 #include "hci_core.h"
@@ -57,7 +58,7 @@ NET_BUF_POOL_FIXED_DEFINE(frag_pool, CONFIG_BT_L2CAP_TX_FRAG_COUNT, FRAG_SIZE,
 #endif /* CONFIG_BT_L2CAP_TX_FRAG_COUNT > 0 */
 
 /* How long until we cancel HCI_LE_Create_Connection */
-#define CONN_TIMEOUT	K_SECONDS(3)
+#define CONN_TIMEOUT	K_SECONDS(CONFIG_BT_CREATE_CONN_TIMEOUT)
 
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_BREDR)
 const struct bt_conn_auth_cb *bt_auth;
@@ -152,6 +153,17 @@ void notify_le_param_updated(struct bt_conn *conn)
 {
 	struct bt_conn_cb *cb;
 
+	/* If new connection parameters meet requirement of pending
+	 * parameters don't send slave conn param request anymore on timeout
+	 */
+	if (atomic_test_bit(conn->flags, BT_CONN_SLAVE_PARAM_SET) &&
+	    conn->le.interval >= conn->le.interval_min &&
+	    conn->le.interval <= conn->le.interval_max &&
+	    conn->le.latency == conn->le.pending_latency &&
+	    conn->le.timeout == conn->le.pending_timeout) {
+		atomic_clear_bit(conn->flags, BT_CONN_SLAVE_PARAM_SET);
+	}
+
 	for (cb = callback_list; cb; cb = cb->_next) {
 		if (cb->le_param_updated) {
 			cb->le_param_updated(conn, conn->le.interval,
@@ -190,25 +202,88 @@ bool le_param_req(struct bt_conn *conn, struct bt_le_conn_param *param)
 	return true;
 }
 
-static void le_conn_update(struct k_work *work)
+static int send_conn_le_param_update(struct bt_conn *conn,
+				const struct bt_le_conn_param *param)
+{
+	BT_DBG("conn %p features 0x%02x params (%d-%d %d %d)", conn,
+	       conn->le.features[0], param->interval_min,
+	       param->interval_max, param->latency, param->timeout);
+
+	/* Use LE connection parameter request if both local and remote support
+	 * it; or if local role is master then use LE connection update.
+	 */
+	if ((BT_FEAT_LE_CONN_PARAM_REQ_PROC(bt_dev.le.features) &&
+	     BT_FEAT_LE_CONN_PARAM_REQ_PROC(conn->le.features) &&
+	     !atomic_test_bit(conn->flags, BT_CONN_SLAVE_PARAM_L2CAP)) ||
+	     (conn->role == BT_HCI_ROLE_MASTER)) {
+		int rc;
+
+		rc = bt_conn_le_conn_update(conn, param);
+
+		/* store those in case of fallback to L2CAP */
+		if (rc == 0) {
+			conn->le.pending_latency = param->latency;
+			conn->le.pending_timeout = param->timeout;
+		}
+
+		return rc;
+	}
+
+	/* If remote master does not support LL Connection Parameters Request
+	 * Procedure
+	 */
+	return bt_l2cap_update_conn_param(conn, param);
+}
+
+static void conn_le_update_timeout(struct k_work *work)
 {
 	struct bt_conn_le *le = CONTAINER_OF(work, struct bt_conn_le,
 					     update_work);
 	struct bt_conn *conn = CONTAINER_OF(le, struct bt_conn, le);
 	const struct bt_le_conn_param *param;
 
+	BT_DBG("conn %p", conn);
+
 	if (IS_ENABLED(CONFIG_BT_CENTRAL) &&
-	    conn->state == BT_CONN_CONNECT) {
-		bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+	    conn->role == BT_CONN_ROLE_MASTER) {
+		/* we don't call bt_conn_disconnect as it would also clear
+		 * auto connect flag if it was set, instead just cancel
+		 * connection directly
+		 */
+		bt_hci_cmd_send(BT_HCI_OP_LE_CREATE_CONN_CANCEL, NULL);
 		return;
 	}
 
-	param = BT_LE_CONN_PARAM(conn->le.interval_min,
-				 conn->le.interval_max,
-				 conn->le.latency,
-				 conn->le.timeout);
+#if defined (CONFIG_BT_GAP_PERIPHERAL_PREF_PARAMS)
+	/* if application set own params use those, otherwise use defaults */
+	if (atomic_test_and_clear_bit(conn->flags, BT_CONN_SLAVE_PARAM_SET)) {
+		param = BT_LE_CONN_PARAM(conn->le.interval_min,
+					 conn->le.interval_max,
+					 conn->le.pending_latency,
+					 conn->le.pending_timeout);
 
-	bt_conn_le_param_update(conn, param);
+		send_conn_le_param_update(conn, param);
+	} else {
+		param = BT_LE_CONN_PARAM(CONFIG_BT_PERIPHERAL_PREF_MIN_INT,
+					 CONFIG_BT_PERIPHERAL_PREF_MAX_INT,
+					 CONFIG_BT_PERIPHERAL_PREF_SLAVE_LATENCY,
+					 CONFIG_BT_PERIPHERAL_PREF_TIMEOUT);
+
+		send_conn_le_param_update(conn, param);
+	}
+#else
+	/* update only if application set own params */
+	if (atomic_test_and_clear_bit(conn->flags, BT_CONN_SLAVE_PARAM_SET)) {
+		param = BT_LE_CONN_PARAM(conn->le.interval_min,
+					 conn->le.interval_max,
+					 conn->le.latency,
+					 conn->le.timeout);
+
+		send_conn_le_param_update(conn, param);
+	}
+#endif
+
+	atomic_set_bit(conn->flags, BT_CONN_SLAVE_PARAM_UPDATE);
 }
 
 static struct bt_conn *conn_new(void)
@@ -915,7 +990,8 @@ static int start_security(struct bt_conn *conn)
 
 		if (conn->required_sec_level > BT_SECURITY_HIGH &&
 		    !(conn->le.keys->flags & BT_KEYS_AUTHENTICATED) &&
-		    !(conn->le.keys->keys & BT_KEYS_LTK_P256)) {
+		    !(conn->le.keys->keys & BT_KEYS_LTK_P256) &&
+		    !(conn->le.keys->enc_size == BT_SMP_MAX_ENC_KEY_SIZE)) {
 			return bt_smp_send_pairing_req(conn);
 		}
 
@@ -981,7 +1057,7 @@ static void bt_conn_reset_rx_state(struct bt_conn *conn)
 
 	net_buf_unref(conn->rx);
 	conn->rx = NULL;
-	conn->rx_len = 0;
+	conn->rx_len = 0U;
 }
 
 void bt_conn_recv(struct bt_conn *conn, struct net_buf *buf, u8_t flags)
@@ -1046,7 +1122,7 @@ void bt_conn_recv(struct bt_conn *conn, struct net_buf *buf, u8_t flags)
 
 		buf = conn->rx;
 		conn->rx = NULL;
-		conn->rx_len = 0;
+		conn->rx_len = 0U;
 
 		break;
 	default:
@@ -1385,7 +1461,7 @@ struct bt_conn *bt_conn_add_le(const bt_addr_le_t *peer)
 	conn->type = BT_CONN_TYPE_LE;
 	conn->le.interval_min = BT_GAP_INIT_CONN_INT_MIN;
 	conn->le.interval_max = BT_GAP_INIT_CONN_INT_MAX;
-	k_delayed_work_init(&conn->le.update_work, le_conn_update);
+	k_delayed_work_init(&conn->le.update_work, conn_le_update_timeout);
 
 	return conn;
 }
@@ -1453,7 +1529,7 @@ void bt_conn_set_state(struct bt_conn *conn, bt_conn_state_t state)
 		}
 		k_fifo_init(&conn->tx_queue);
 		k_fifo_init(&conn->tx_notify);
-		k_poll_signal(&conn_change, 0);
+		k_poll_signal_raise(&conn_change, 0);
 
 		sys_slist_init(&conn->channels);
 
@@ -1482,7 +1558,7 @@ void bt_conn_set_state(struct bt_conn *conn, bt_conn_state_t state)
 			}
 
 			atomic_set_bit(conn->flags, BT_CONN_CLEANUP);
-			k_poll_signal(&conn_change, 0);
+			k_poll_signal_raise(&conn_change, 0);
 			/* The last ref will be dropped by the tx_thread */
 		} else if (old_state == BT_CONN_CONNECT) {
 			/* conn->err will be set in this case */
@@ -1746,25 +1822,30 @@ int bt_conn_le_param_update(struct bt_conn *conn,
 	    conn->le.interval <= param->interval_max &&
 	    conn->le.latency == param->latency &&
 	    conn->le.timeout == param->timeout) {
+		atomic_clear_bit(conn->flags, BT_CONN_SLAVE_PARAM_SET);
 		return -EALREADY;
 	}
 
-	/* Cancel any pending update */
-	k_delayed_work_cancel(&conn->le.update_work);
-
-	/* Use LE connection parameter request if both local and remote support
-	 * it; or if local role is master then use LE connection update.
-	 */
-	if ((BT_FEAT_LE_CONN_PARAM_REQ_PROC(bt_dev.le.features) &&
-	     BT_FEAT_LE_CONN_PARAM_REQ_PROC(conn->le.features)) ||
-	    (conn->role == BT_HCI_ROLE_MASTER)) {
-		return bt_conn_le_conn_update(conn, param);
+	if (IS_ENABLED(CONFIG_BT_CENTRAL) &&
+	    conn->role == BT_CONN_ROLE_MASTER) {
+		return send_conn_le_param_update(conn, param);
 	}
 
-	/* If remote master does not support LL Connection Parameters Request
-	 * Procedure
-	 */
-	return bt_l2cap_update_conn_param(conn, param);
+	if (IS_ENABLED(CONFIG_BT_PERIPHERAL)) {
+		/* if slave conn param update timer expired just send request */
+		if (atomic_test_bit(conn->flags, BT_CONN_SLAVE_PARAM_UPDATE)) {
+			return send_conn_le_param_update(conn, param);
+		}
+
+		/* store new conn params to be used by update timer */
+		conn->le.interval_min = param->interval_min;
+		conn->le.interval_max = param->interval_max;
+		conn->le.pending_latency = param->latency;
+		conn->le.pending_timeout = param->timeout;
+		atomic_set_bit(conn->flags, BT_CONN_SLAVE_PARAM_SET);
+	}
+
+	return 0;
 }
 
 int bt_conn_disconnect(struct bt_conn *conn, u8_t reason)
@@ -1878,7 +1959,7 @@ struct bt_conn *bt_conn_create_le(const bt_addr_le_t *peer,
 	return conn;
 }
 
-int bt_le_set_auto_conn(bt_addr_le_t *addr,
+int bt_le_set_auto_conn(const bt_addr_le_t *addr,
 			const struct bt_le_conn_param *param)
 {
 	struct bt_conn *conn;
@@ -2168,9 +2249,12 @@ int bt_conn_auth_pairing_confirm(struct bt_conn *conn)
 }
 #endif /* CONFIG_BT_SMP || CONFIG_BT_BREDR */
 
-u8_t bt_conn_get_id(struct bt_conn *conn)
+u8_t bt_conn_index(struct bt_conn *conn)
 {
-	return conn - conns;
+	u8_t index = conn - conns;
+
+	__ASSERT(index < CONFIG_BT_MAX_CONN, "Invalid bt_conn pointer");
+	return index;
 }
 
 struct bt_conn *bt_conn_lookup_id(u8_t id)

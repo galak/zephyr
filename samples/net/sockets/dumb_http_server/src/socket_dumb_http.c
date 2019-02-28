@@ -17,6 +17,9 @@
 
 #else
 
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_dump_http_download_sample, LOG_LEVEL_DBG);
+
 #include <net/socket.h>
 #include <kernel.h>
 #include <net/net_app.h>

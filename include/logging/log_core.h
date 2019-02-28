@@ -9,9 +9,14 @@
 #include <logging/log_msg.h>
 #include <logging/log_instance.h>
 #include <misc/util.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#if UINTPTR_MAX == 0xFFFFFFFFFFFFFFFFUL
+#error "Logger does not support 64 bit architecture."
 #endif
 
 #if !CONFIG_LOG
@@ -19,6 +24,12 @@ extern "C" {
 #define CONFIG_LOG_DOMAIN_ID 0
 #define CONFIG_LOG_MAX_LEVEL 0
 #endif
+
+#define LOG_FUNCTION_PREFIX_MASK \
+	((IS_ENABLED(CONFIG_LOG_FUNC_NAME_PREFIX_ERR) << LOG_LEVEL_ERR) | \
+	 (IS_ENABLED(CONFIG_LOG_FUNC_NAME_PREFIX_WRN) << LOG_LEVEL_WRN) | \
+	 (IS_ENABLED(CONFIG_LOG_FUNC_NAME_PREFIX_INF) << LOG_LEVEL_INF) | \
+	 (IS_ENABLED(CONFIG_LOG_FUNC_NAME_PREFIX_DBG) << LOG_LEVEL_DBG))
 
 /** @brief Macro for returning local level value if defined or default.
  *
@@ -41,14 +52,18 @@ extern "C" {
 
 #define LOG_DEBRACKET(...) __VA_ARGS__
 
+#define __LOG_ARG_1(val, ...) val
 #define __LOG_ARG_2(ignore_this, val, ...) val
+#define __LOG_ARGS_LESS1(val, ...) __VA_ARGS__
+
 #define __LOG_ARG_2_DEBRACKET(ignore_this, val, ...) LOG_DEBRACKET val
 
 /**
  * @brief Macro for conditional code generation if provided log level allows.
  *
- * Macro behaves similarly to standard #if #else #endif clause. The difference is
- * that it is evaluated when used and not when header file is included.
+ * Macro behaves similarly to standard \#if \#else \#endif clause. The
+ * difference is that it is evaluated when used and not when header file is
+ * included.
  *
  * @param _eval_level Evaluated level. If level evaluates to one of existing log
  *		      log level (1-4) then macro evaluates to _iftrue.
@@ -71,6 +86,26 @@ extern "C" {
 #define _LOG_EVAL2(one_or_two_args, _iftrue, _iffalse) \
 	__LOG_ARG_2_DEBRACKET(one_or_two_args _iftrue, _iffalse)
 
+/**
+ * @brief Macro for condition code generation.
+ *
+ * @param _eval Parameter evaluated against 0
+ * @param _ifzero Code included if _eval is 0. Must be wrapped in brackets.
+ * @param _ifnzero Code included if _eval is not  0.
+ *		   Must be wrapped in brackets.
+ */
+
+#define _LOG_Z_EVAL(_eval, _ifzero, _ifnzero) \
+	_LOG_Z_EVAL1(_eval, _ifzero, _ifnzero)
+
+#define _LOG_Z_EVAL1(_eval, _ifzero, _ifnzero) \
+	_LOG_Z_EVAL2(_LOG_Z_ZZZZ##_eval, _ifzero, _ifnzero)
+
+#define _LOG_Z_ZZZZ0 _LOG_Z_YYYY,
+
+#define _LOG_Z_EVAL2(one_or_two_args, _ifzero, _ifnzero) \
+	__LOG_ARG_2_DEBRACKET(one_or_two_args _ifzero, _ifnzero)
+
 /** @brief Macro for getting log level for given module.
  *
  * It is evaluated to LOG_LEVEL if defined. Otherwise CONFIG_LOG_DEFAULT_LEVEL
@@ -84,53 +119,84 @@ extern "C" {
  *
  *  @param _addr Address of the element.
  */
-#define LOG_CONST_ID_GET(_addr)						       \
-	_LOG_EVAL(							       \
-	  _LOG_LEVEL(),							       \
-	  (log_const_source_id((const struct log_source_const_data *)_addr)),  \
-	  (0)								       \
+#define LOG_CONST_ID_GET(_addr) \
+	_LOG_EVAL(\
+	  CONFIG_LOG,\
+	  (__log_level ? \
+	  log_const_source_id((const struct log_source_const_data *)_addr) : \
+	  0),\
+	  (0)\
 	)
 
 /**
  * @def LOG_CURRENT_MODULE_ID
  * @brief Macro for getting ID of current module.
  */
-#define LOG_CURRENT_MODULE_ID()						\
-	_LOG_EVAL(							\
-	  _LOG_LEVEL(),							\
-	  (log_const_source_id(__log_current_const_data_get())),	\
-	  (0)								\
-	)
+#define LOG_CURRENT_MODULE_ID() (__log_level ? \
+	log_const_source_id(__log_current_const_data) : 0)
 
 /**
  * @def LOG_CURRENT_DYNAMIC_DATA_ADDR
  * @brief Macro for getting address of dynamic structure of current module.
  */
-#define LOG_CURRENT_DYNAMIC_DATA_ADDR()			\
-	_LOG_EVAL(					\
-	  _LOG_LEVEL(),					\
-	  (__log_current_dynamic_data_get()),		\
-	  ((struct log_source_dynamic_data *)0)		\
-	)
+#define LOG_CURRENT_DYNAMIC_DATA_ADDR()	(__log_level ? \
+	__log_current_dynamic_data : (struct log_source_dynamic_data *)0)
 
 /** @brief Macro for getting ID of the element of the section.
  *
  *  @param _addr Address of the element.
  */
-#define LOG_DYNAMIC_ID_GET(_addr)					     \
-	_LOG_EVAL(							     \
-	  _LOG_LEVEL(),							     \
-	  (log_dynamic_source_id((struct log_source_dynamic_data *)_addr)),  \
-	  (0)								     \
+#define LOG_DYNAMIC_ID_GET(_addr) \
+	_LOG_EVAL(\
+	  CONFIG_LOG,\
+	  (__log_level ? \
+	  log_dynamic_source_id((struct log_source_dynamic_data *)_addr) : 0),\
+	  (0)\
 	)
+
+/**
+ * @brief Macro for optional injection of function name as first argument of
+ *	  formatted string. _LOG_Z_EVAL() macro is used to handle no arguments
+ *	  case.
+ *
+ *	  The purpose of this macro is to prefix string literal with format
+ *	  specifier for function name and inject function name as first
+ *	  argument. In order to handle string with no arguments _LOG_Z_EVAL is
+ *	  used.
+ */
+
+#define _LOG_STR(...) "%s: " __LOG_ARG_1(__VA_ARGS__), __func__\
+		_LOG_Z_EVAL(NUM_VA_ARGS_LESS_1(__VA_ARGS__),\
+			    (),\
+			    (, __LOG_ARGS_LESS1(__VA_ARGS__))\
+			   )
+
 
 /******************************************************************************/
 /****************** Internal macros for log frontend **************************/
 /******************************************************************************/
+/**@brief Second stage for _LOG_NARGS_POSTFIX */
+#define _LOG_NARGS_POSTFIX_IMPL(				\
+	_ignored,						\
+	_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10,		\
+	_11, _12, _13, _14, N, ...) N
+
+/**@brief Macro to get the postfix for further log message processing.
+ *
+ * Logs with more than 3 arguments are processed in a generic way.
+ *
+ * param[in]    ...     List of arguments
+ *
+ * @retval  Postfix, number of arguments or _LONG when more than 3 arguments.
+ */
+#define _LOG_NARGS_POSTFIX(...) \
+	_LOG_NARGS_POSTFIX_IMPL(__VA_ARGS__, LONG, LONG, LONG, LONG, LONG, \
+			LONG, LONG, LONG, LONG, LONG, LONG, LONG, 3, 2, 1, 0, ~)
+
 #define _LOG_INTERNAL_X(N, ...)  UTIL_CAT(_LOG_INTERNAL_, N)(__VA_ARGS__)
 
 #define __LOG_INTERNAL(_src_level, ...)			 \
-	_LOG_INTERNAL_X(NUM_VA_ARGS_LESS_1(__VA_ARGS__), \
+	_LOG_INTERNAL_X(_LOG_NARGS_POSTFIX(__VA_ARGS__), \
 			_src_level, __VA_ARGS__)
 
 #define _LOG_INTERNAL_0(_src_level, _str) \
@@ -153,25 +219,7 @@ extern "C" {
 	do {							 \
 		u32_t args[] = {__LOG_ARGUMENTS(__VA_ARGS__)};	 \
 		log_n(_str, args, ARRAY_SIZE(args), _src_level); \
-	} while (0)
-
-#define _LOG_INTERNAL_4(_src_level, _str, ...) \
-		_LOG_INTERNAL_LONG(_src_level, _str, __VA_ARGS__)
-
-#define _LOG_INTERNAL_5(_src_level, _str, ...) \
-		_LOG_INTERNAL_LONG(_src_level, _str, __VA_ARGS__)
-
-#define _LOG_INTERNAL_6(_src_level, _str, ...) \
-		_LOG_INTERNAL_LONG(_src_level, _str, __VA_ARGS__)
-
-#define _LOG_INTERNAL_7(_src_level, _str, ...) \
-		_LOG_INTERNAL_LONG(_src_level, _str, __VA_ARGS__)
-
-#define _LOG_INTERNAL_8(_src_level, _str, ...) \
-		_LOG_INTERNAL_LONG(_src_level, _str, __VA_ARGS__)
-
-#define _LOG_INTERNAL_9(_src_level, _str, ...) \
-		_LOG_INTERNAL_LONG(_src_level, _str, __VA_ARGS__)
+	} while (false)
 
 #define _LOG_LEVEL_CHECK(_level, _check_level, _default_level) \
 	(_level <= _LOG_RESOLVED_LEVEL(_check_level, _default_level))
@@ -182,7 +230,7 @@ extern "C" {
 	_LOG_LEVEL_CHECK(_level, CONFIG_LOG_OVERRIDE_LEVEL, LOG_LEVEL_NONE) \
 	||								    \
 	(!IS_ENABLED(CONFIG_LOG_OVERRIDE_LEVEL) &&			    \
-	_LOG_LEVEL_CHECK(_level, LOG_LEVEL, CONFIG_LOG_DEFAULT_LEVEL) &&    \
+	(_level <= __log_level) &&					    \
 	(_level <= CONFIG_LOG_MAX_LEVEL)				    \
 	)								    \
 	))
@@ -196,21 +244,27 @@ extern "C" {
 		    (_level <= LOG_RUNTIME_FILTER(_filter))) {		    \
 			struct log_msg_ids src_level = {		    \
 				.level = _level,			    \
-				.source_id = _id,			    \
-				.domain_id = CONFIG_LOG_DOMAIN_ID	    \
+				.domain_id = CONFIG_LOG_DOMAIN_ID,	    \
+				.source_id = _id			    \
 			};						    \
-			__LOG_INTERNAL(src_level, __VA_ARGS__);		    \
+									    \
+			if ((1 << _level) & LOG_FUNCTION_PREFIX_MASK) {	    \
+				__LOG_INTERNAL(src_level,		    \
+						_LOG_STR(__VA_ARGS__));	    \
+			} else {					    \
+				__LOG_INTERNAL(src_level, __VA_ARGS__);	    \
+			}						    \
 		} else if (0) {						    \
 			/* Arguments checker present but never evaluated.*/ \
 			/* Placed here to ensure that __VA_ARGS__ are*/     \
 			/* evaluated once when log is enabled.*/	    \
 			log_printf_arg_checker(__VA_ARGS__);		    \
 		}							    \
-	} while (0)
+	} while (false)
 
 #define _LOG(_level, ...)			       \
 	__LOG(_level,				       \
-	      LOG_CURRENT_MODULE_ID(),		       \
+	      (u16_t)LOG_CURRENT_MODULE_ID(),	       \
 	      LOG_CURRENT_DYNAMIC_DATA_ADDR(),	       \
 	      __VA_ARGS__)
 
@@ -237,7 +291,7 @@ extern "C" {
 			};					      \
 			log_hexdump(_str, _data, _length, src_level); \
 		}						      \
-	} while (0)
+	} while (false)
 
 #define _LOG_HEXDUMP(_level, _data, _length, _str)	       \
 	__LOG_HEXDUMP(_level,				       \
@@ -286,7 +340,7 @@ extern "C" {
 				 LOG_FILTER_SLOT_SHIFT(_id));	     \
 		*(_filters) |= ((_filter) & LOG_FILTER_SLOT_MASK) << \
 			       LOG_FILTER_SLOT_SHIFT(_id);	     \
-	} while (0)
+	} while (false)
 
 #define LOG_FILTER_AGGR_SLOT_IDX 0
 
@@ -335,7 +389,7 @@ static inline u8_t log_compiled_level_get(u32_t source_id)
 static inline u32_t log_const_source_id(
 				const struct log_source_const_data *data)
 {
-	return ((void *)data - (void *)__log_const_start)/
+	return ((u8_t *)data - (u8_t *)__log_const_start)/
 			sizeof(struct log_source_const_data);
 }
 
@@ -377,7 +431,7 @@ static inline u32_t *log_dynamic_filters_get(u32_t source_id)
  */
 static inline u32_t log_dynamic_source_id(struct log_source_dynamic_data *data)
 {
-	return ((void *)data - (void *)__log_dynamic_start)/
+	return ((u8_t *)data - (u8_t *)__log_dynamic_start)/
 			sizeof(struct log_source_dynamic_data);
 }
 
@@ -470,6 +524,20 @@ int log_printk(const char *fmt, va_list ap);
  * @note This function is intended to be used when porting other log systems.
  */
 void log_generic(struct log_msg_ids src_level, const char *fmt, va_list ap);
+
+/** @brief Check if address belongs to the memory pool used for transient.
+ *
+ * @param buf Buffer.
+ *
+ * @return True if address within the pool, false otherwise.
+ */
+bool log_is_strdup(void *buf);
+
+/** @brief Free allocated buffer.
+ *
+ * @param buf Buffer.
+ */
+void log_free(void *buf);
 
 #ifdef __cplusplus
 }

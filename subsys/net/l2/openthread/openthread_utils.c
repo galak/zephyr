@@ -4,18 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define NET_SYS_LOG_LEVEL CONFIG_OPENTHREAD_L2_LOG_LEVEL
-
-#if defined(CONFIG_OPENTHREAD_L2_DEBUG)
-#define NET_DOMAIN "net/openthread_l2"
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_DECLARE(net_l2_openthread, CONFIG_OPENTHREAD_L2_LOG_LEVEL);
 
 #include <net/net_core.h>
 #include <net/net_pkt.h>
 #include <net/openthread.h>
 
-#include <openthread/openthread.h>
+#include <openthread/ip6.h>
 
 #include "openthread_utils.h"
 
@@ -29,7 +25,7 @@ int pkt_list_add(struct openthread_context *context, struct net_pkt *pkt)
 
 	i_idx++;
 	if (i_idx == CONFIG_OPENTHREAD_PKT_LIST_SIZE) {
-		i_idx = 0;
+		i_idx = 0U;
 	}
 
 	if (i_idx == context->pkt_list_out_idx) {
@@ -74,14 +70,15 @@ void add_ipv6_addr_to_zephyr(struct openthread_context *context)
 
 	for (address = otIp6GetUnicastAddresses(context->instance);
 	     address; address = address->mNext) {
-#if CONFIG_OPENTHREAD_L2_LOG_LEVEL == SYS_LOG_LEVEL_DEBUG
-		char buf[NET_IPV6_ADDR_LEN];
+		if (CONFIG_OPENTHREAD_L2_LOG_LEVEL == LOG_LEVEL_DBG) {
+			char buf[NET_IPV6_ADDR_LEN];
 
-		NET_DBG("Adding %s",
-			net_addr_ntop(AF_INET6,
-				      (struct in6_addr *)(&address->mAddress),
-				      buf, sizeof(buf)));
-#endif
+			NET_DBG("Adding %s",
+				log_strdup(net_addr_ntop(AF_INET6,
+				       (struct in6_addr *)(&address->mAddress),
+				       buf, sizeof(buf))));
+		}
+
 		net_if_ipv6_addr_add(context->iface,
 				     (struct in6_addr *)(&address->mAddress),
 				     NET_ADDR_ANY, 0);
@@ -118,15 +115,14 @@ void add_ipv6_addr_to_ot(struct openthread_context *context)
 
 	otIp6AddUnicastAddress(context->instance, &addr);
 
-#if CONFIG_OPENTHREAD_L2_LOG_LEVEL == SYS_LOG_LEVEL_DEBUG
-	{
+	if (CONFIG_OPENTHREAD_L2_LOG_LEVEL == LOG_LEVEL_DBG) {
 		char buf[NET_IPV6_ADDR_LEN];
 
-		NET_DBG("Added %s", net_addr_ntop(AF_INET6,
-						  &addr.mAddress, buf,
-						  sizeof(buf)));
+		NET_DBG("Added %s",
+			log_strdup(net_addr_ntop(AF_INET6,
+						 &addr.mAddress, buf,
+						 sizeof(buf))));
 	}
-#endif
 }
 
 void add_ipv6_maddr_to_ot(struct openthread_context *context)
@@ -152,15 +148,13 @@ void add_ipv6_maddr_to_ot(struct openthread_context *context)
 
 	otIp6SubscribeMulticastAddress(context->instance, &addr);
 
-#if CONFIG_OPENTHREAD_L2_LOG_LEVEL == SYS_LOG_LEVEL_DEBUG
-	{
+	if (CONFIG_OPENTHREAD_L2_LOG_LEVEL == LOG_LEVEL_DBG) {
 		char buf[NET_IPV6_ADDR_LEN];
 
 		NET_DBG("Added multicast %s",
-			net_addr_ntop(AF_INET6, &addr,
-				      buf, sizeof(buf)));
+			log_strdup(net_addr_ntop(AF_INET6, &addr,
+						 buf, sizeof(buf))));
 	}
-#endif
 }
 
 void add_ipv6_maddr_to_zephyr(struct openthread_context *context)
@@ -175,14 +169,16 @@ void add_ipv6_maddr_to_zephyr(struct openthread_context *context)
 			continue;
 		}
 
-#if CONFIG_OPENTHREAD_L2_LOG_LEVEL == SYS_LOG_LEVEL_DEBUG
-		char buf[NET_IPV6_ADDR_LEN];
+		if (CONFIG_OPENTHREAD_L2_LOG_LEVEL == LOG_LEVEL_DBG) {
+			char buf[NET_IPV6_ADDR_LEN];
 
-		NET_DBG("Adding multicast %s",
-			net_addr_ntop(AF_INET6,
-				      (struct in6_addr *)(&maddress->mAddress),
-				      buf, sizeof(buf)));
-#endif
+			NET_DBG("Adding multicast %s",
+				log_strdup(net_addr_ntop(AF_INET6,
+							 (struct in6_addr *)
+							 (&maddress->mAddress),
+							 buf, sizeof(buf))));
+		}
+
 		net_if_ipv6_maddr_add(context->iface,
 				      (struct in6_addr *)(&maddress->mAddress));
 	}
@@ -221,14 +217,15 @@ void rm_ipv6_addr_from_zephyr(struct openthread_context *context)
 			}
 		}
 		if (!used) {
-#if CONFIG_OPENTHREAD_L2_LOG_LEVEL == SYS_LOG_LEVEL_DEBUG
-			char buf[NET_IPV6_ADDR_LEN];
+			if (CONFIG_OPENTHREAD_L2_LOG_LEVEL == LOG_LEVEL_DBG) {
+				char buf[NET_IPV6_ADDR_LEN];
 
-			NET_DBG("Removing %s",
-				net_addr_ntop(AF_INET6,
+				NET_DBG("Removing %s",
+					log_strdup(net_addr_ntop(AF_INET6,
 					      &zephyr_addr->address.in6_addr,
-					      buf, sizeof(buf)));
-#endif
+					      buf, sizeof(buf))));
+			}
+
 			net_if_ipv6_addr_rm(context->iface,
 					    &zephyr_addr->address.in6_addr);
 		}
@@ -268,14 +265,15 @@ void rm_ipv6_maddr_from_zephyr(struct openthread_context *context)
 			}
 		}
 		if (!used) {
-#if CONFIG_OPENTHREAD_L2_LOG_LEVEL == SYS_LOG_LEVEL_DEBUG
-			char buf[NET_IPV6_ADDR_LEN];
+			if (CONFIG_OPENTHREAD_L2_LOG_LEVEL == LOG_LEVEL_DBG) {
+				char buf[NET_IPV6_ADDR_LEN];
 
-			NET_DBG("Removing multicast %s",
-				net_addr_ntop(AF_INET6,
+				NET_DBG("Removing multicast %s",
+					log_strdup(net_addr_ntop(AF_INET6,
 					      &zephyr_addr->address.in6_addr,
-					      buf, sizeof(buf)));
-#endif
+					      buf, sizeof(buf))));
+			}
+
 			net_if_ipv6_maddr_rm(context->iface,
 					     &zephyr_addr->address.in6_addr);
 		}

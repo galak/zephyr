@@ -97,8 +97,13 @@ struct net_pkt {
 	u16_t data_len;         /* amount of payload data that can be added */
 
 	u16_t appdatalen;
-	u8_t ll_reserve;	/* link layer header length */
 	u8_t ip_hdr_len;	/* pre-filled in order to avoid func call */
+	u8_t transport_proto;	/* Transport protol of data, like
+				 * IPPROTO_TCP or IPPROTO_UDP. This value is
+				 * saved so that we do not need to traverse
+				 * through extension headers (this is mainly
+				 * issue in IPv6).
+				 */
 
 #if defined(CONFIG_NET_TCP)
 	sys_snode_t sent_list;
@@ -112,10 +117,18 @@ struct net_pkt {
 				 * packet before EOF
 				 * Used only if defined(CONFIG_NET_TCP)
 				 */
-	u8_t pkt_queued: 1;	/* For outgoing packet: is this packet queued
-				 * to be sent but has not reached the driver
-				 * yet. Used only if defined(CONFIG_NET_TCP)
-				 */
+	union {
+		u8_t pkt_queued: 1; /* For outgoing packet: is this packet
+				     * queued to be sent but has not reached
+				     * the driver yet.
+				     * Used only if defined(CONFIG_NET_TCP)
+				     */
+		u8_t gptp_pkt: 1; /* For outgoing packet: is this packet
+				   * a GPTP packet.
+				   * Used only if defined (CONFIG_NET_GPTP)
+				   */
+	};
+
 	u8_t forwarding : 1;	/* Are we forwarding this pkt
 				 * Used only if defined(CONFIG_NET_ROUTE)
 				 */
@@ -253,6 +266,16 @@ static inline void net_pkt_set_family(struct net_pkt *pkt, u8_t family)
 	pkt->family = family;
 }
 
+static inline bool net_pkt_is_gptp(struct net_pkt *pkt)
+{
+	return !!(pkt->gptp_pkt);
+}
+
+static inline void net_pkt_set_gptp(struct net_pkt *pkt, bool is_gptp)
+{
+	pkt->gptp_pkt = is_gptp;
+}
+
 static inline u8_t net_pkt_ip_hdr_len(struct net_pkt *pkt)
 {
 	return pkt->ip_hdr_len;
@@ -261,6 +284,16 @@ static inline u8_t net_pkt_ip_hdr_len(struct net_pkt *pkt)
 static inline void net_pkt_set_ip_hdr_len(struct net_pkt *pkt, u8_t len)
 {
 	pkt->ip_hdr_len = len;
+}
+
+static inline u8_t net_pkt_transport_proto(struct net_pkt *pkt)
+{
+	return pkt->transport_proto;
+}
+
+static inline void net_pkt_set_transport_proto(struct net_pkt *pkt, u8_t proto)
+{
+	pkt->transport_proto = proto;
 }
 
 static inline u8_t *net_pkt_next_hdr(struct net_pkt *pkt)
@@ -554,6 +587,11 @@ static inline size_t net_pkt_get_len(struct net_pkt *pkt)
 	return net_buf_frags_len(pkt->frags);
 }
 
+static inline u8_t *net_pkt_data(struct net_pkt *pkt)
+{
+	return pkt->frags->data;
+}
+
 static inline u8_t *net_pkt_ip_data(struct net_pkt *pkt)
 {
 	return pkt->frags->data;
@@ -579,21 +617,6 @@ static inline void net_pkt_set_appdatalen(struct net_pkt *pkt, u16_t len)
 	pkt->appdatalen = len;
 }
 
-static inline u8_t net_pkt_ll_reserve(struct net_pkt *pkt)
-{
-	return pkt->ll_reserve;
-}
-
-static inline void net_pkt_set_ll_reserve(struct net_pkt *pkt, u8_t len)
-{
-	pkt->ll_reserve = len;
-}
-
-static inline u8_t *net_pkt_ll(struct net_pkt *pkt)
-{
-	return net_pkt_ip_data(pkt) - net_pkt_ll_reserve(pkt);
-}
-
 static inline struct net_linkaddr *net_pkt_lladdr_src(struct net_pkt *pkt)
 {
 	return &pkt->lladdr_src;
@@ -612,9 +635,8 @@ static inline void net_pkt_lladdr_swap(struct net_pkt *pkt)
 	net_pkt_lladdr_dst(pkt)->addr = addr;
 }
 
-static inline void net_pkt_ll_clear(struct net_pkt *pkt)
+static inline void net_pkt_lladdr_clear(struct net_pkt *pkt)
 {
-	memset(net_pkt_ll(pkt), 0, net_pkt_ll_reserve(pkt));
 	net_pkt_lladdr_src(pkt)->addr = NULL;
 	net_pkt_lladdr_src(pkt)->len = 0;
 }
@@ -654,6 +676,13 @@ static inline void net_pkt_set_ipv4_auto(struct net_pkt *pkt,
 {
 	pkt->ipv4_auto_arp_msg = is_auto_arp_msg;
 }
+#else
+static inline bool net_pkt_ipv4_auto(struct net_pkt *pkt)
+{
+	return false;
+}
+
+#define net_pkt_set_ipv4_auto(...)
 #endif
 
 #define NET_IPV6_HDR(pkt) ((struct net_ipv6_hdr *)net_pkt_ip_data(pkt))
@@ -704,30 +733,27 @@ static inline void net_pkt_set_src_ipv6_addr(struct net_pkt *pkt)
 	NET_BUF_POOL_DEFINE(name, count, CONFIG_NET_BUF_DATA_SIZE,	\
 			    CONFIG_NET_BUF_USER_DATA_SIZE, NULL)
 
-#if defined(CONFIG_NET_DEBUG_NET_PKT)
+#if defined(CONFIG_NET_DEBUG_NET_PKT_ALLOC) || \
+	(CONFIG_NET_PKT_LOG_LEVEL >= LOG_LEVEL_DBG)
 
 /* Debug versions of the net_pkt functions that are used when tracking
  * buffer usage.
  */
 
 struct net_pkt *net_pkt_get_reserve_debug(struct k_mem_slab *slab,
-					  u16_t reserve_head,
 					  s32_t timeout,
 					  const char *caller,
 					  int line);
-#define net_pkt_get_reserve(slab, reserve_head, timeout)		\
-	net_pkt_get_reserve_debug(slab, reserve_head, timeout,		\
-				  __func__, __LINE__)
+#define net_pkt_get_reserve(slab, timeout)				\
+	net_pkt_get_reserve_debug(slab, timeout, __func__, __LINE__)
 
 struct net_buf *net_pkt_get_reserve_data_debug(struct net_buf_pool *pool,
-					       u16_t reserve_head,
 					       s32_t timeout,
 					       const char *caller,
 					       int line);
 
-#define net_pkt_get_reserve_data(pool, reserve_head, timeout)		\
-	net_pkt_get_reserve_data_debug(pool, reserve_head, timeout,	\
-				       __func__, __LINE__)
+#define net_pkt_get_reserve_data(pool, timeout)				\
+	net_pkt_get_reserve_data_debug(pool, timeout, __func__, __LINE__)
 
 struct net_pkt *net_pkt_get_rx_debug(struct net_context *context,
 				     s32_t timeout,
@@ -747,31 +773,27 @@ struct net_buf *net_pkt_get_data_debug(struct net_context *context,
 #define net_pkt_get_data(context, timeout)				\
 	net_pkt_get_data_debug(context, timeout, __func__, __LINE__)
 
-struct net_pkt *net_pkt_get_reserve_rx_debug(u16_t reserve_head,
-					     s32_t timeout,
+struct net_pkt *net_pkt_get_reserve_rx_debug(s32_t timeout,
 					     const char *caller, int line);
-#define net_pkt_get_reserve_rx(res, timeout)				\
-	net_pkt_get_reserve_rx_debug(res, timeout, __func__, __LINE__)
+#define net_pkt_get_reserve_rx(timeout)					\
+	net_pkt_get_reserve_rx_debug(timeout, __func__, __LINE__)
 
-struct net_pkt *net_pkt_get_reserve_tx_debug(u16_t reserve_head,
-					     s32_t timeout,
+struct net_pkt *net_pkt_get_reserve_tx_debug(s32_t timeout,
 					     const char *caller, int line);
-#define net_pkt_get_reserve_tx(res, timeout)				\
-	net_pkt_get_reserve_tx_debug(res, timeout, __func__, __LINE__)
+#define net_pkt_get_reserve_tx(timeout)					\
+	net_pkt_get_reserve_tx_debug(timeout, __func__, __LINE__)
 
-struct net_buf *net_pkt_get_reserve_rx_data_debug(u16_t reserve_head,
-						  s32_t timeout,
+struct net_buf *net_pkt_get_reserve_rx_data_debug(s32_t timeout,
 						  const char *caller,
 						  int line);
-#define net_pkt_get_reserve_rx_data(res, timeout)			\
-	net_pkt_get_reserve_rx_data_debug(res, timeout, __func__, __LINE__)
+#define net_pkt_get_reserve_rx_data(timeout)				\
+	net_pkt_get_reserve_rx_data_debug(timeout, __func__, __LINE__)
 
-struct net_buf *net_pkt_get_reserve_tx_data_debug(u16_t reserve_head,
-						  s32_t timeout,
+struct net_buf *net_pkt_get_reserve_tx_data_debug(s32_t timeout,
 						  const char *caller,
 						  int line);
-#define net_pkt_get_reserve_tx_data(res, timeout)			\
-	net_pkt_get_reserve_tx_data_debug(res, timeout, __func__, __LINE__)
+#define net_pkt_get_reserve_tx_data(timeout)				\
+	net_pkt_get_reserve_tx_data_debug(timeout, __func__, __LINE__)
 
 struct net_buf *net_pkt_get_frag_debug(struct net_pkt *pkt,
 				       s32_t timeout,
@@ -821,7 +843,7 @@ void net_pkt_frag_insert_debug(struct net_pkt *pkt, struct net_buf *frag,
  */
 void net_pkt_print_frags(struct net_pkt *pkt);
 
-#else /* CONFIG_NET_DEBUG_NET_PKT */
+#else /* CONFIG_NET_PKT_LOG_LEVEL >= LOG_LEVEL_DBG */
 
 #define net_pkt_print_frags(...)
 
@@ -831,7 +853,6 @@ void net_pkt_print_frags(struct net_pkt *pkt);
  * @details Get network packet from the specific packet slab.
  *
  * @param slab Network packet slab.
- * @param reserve_head How many bytes to reserve for headroom.
  * @param timeout Affects the action taken should the net pkt slab be empty.
  *        If K_NO_WAIT, then return immediately. If K_FOREVER, then
  *        wait as long as necessary. Otherwise, wait up to the specified
@@ -840,7 +861,6 @@ void net_pkt_print_frags(struct net_pkt *pkt);
  * @return Network packet if successful, NULL otherwise.
  */
 struct net_pkt *net_pkt_get_reserve(struct k_mem_slab *slab,
-				    u16_t reserve_head,
 				    s32_t timeout);
 
 /**
@@ -897,13 +917,11 @@ struct net_buf *net_pkt_get_data(struct net_context *context,
 				 s32_t timeout);
 
 /**
- * @brief Get RX packet from slab but also reserve headroom for
- * potential headers.
+ * @brief Get RX packet from slab
  *
  * @details Normally this version is not useful for applications
  * but is mainly used by network fragmentation code.
  *
- * @param reserve_head How many bytes to reserve for headroom.
  * @param timeout Affects the action taken should the net pkt slab be empty.
  *        If K_NO_WAIT, then return immediately. If K_FOREVER, then
  *        wait as long as necessary. Otherwise, wait up to the specified
@@ -911,17 +929,14 @@ struct net_buf *net_pkt_get_data(struct net_context *context,
  *
  * @return Network packet if successful, NULL otherwise.
  */
-struct net_pkt *net_pkt_get_reserve_rx(u16_t reserve_head,
-				       s32_t timeout);
+struct net_pkt *net_pkt_get_reserve_rx(s32_t timeout);
 
 /**
- * @brief Get TX packet from slab but also reserve headroom for
- * potential headers.
+ * @brief Get TX packet from slab
  *
  * @details Normally this version is not useful for applications
  * but is mainly used by network fragmentation code.
  *
- * @param reserve_head How many bytes to reserve for headroom.
  * @param timeout Affects the action taken should the net pkt slab be empty.
  *        If K_NO_WAIT, then return immediately. If K_FOREVER, then
  *        wait as long as necessary. Otherwise, wait up to the specified
@@ -929,17 +944,15 @@ struct net_pkt *net_pkt_get_reserve_rx(u16_t reserve_head,
  *
  * @return Network packet if successful, NULL otherwise.
  */
-struct net_pkt *net_pkt_get_reserve_tx(u16_t reserve_head,
-				       s32_t timeout);
+struct net_pkt *net_pkt_get_reserve_tx(s32_t timeout);
 
 /**
- * @brief Get RX DATA buffer from pool but also reserve headroom for
- * potential headers. Normally you should use net_pkt_get_frag() instead.
+ * @brief Get RX DATA buffer from pool.
+ * Normally you should use net_pkt_get_frag() instead.
  *
  * @details Normally this version is not useful for applications
  * but is mainly used by network fragmentation code.
  *
- * @param reserve_head How many bytes to reserve for headroom.
  * @param timeout Affects the action taken should the net buf pool be empty.
  *        If K_NO_WAIT, then return immediately. If K_FOREVER, then
  *        wait as long as necessary. Otherwise, wait up to the specified
@@ -947,17 +960,15 @@ struct net_pkt *net_pkt_get_reserve_tx(u16_t reserve_head,
  *
  * @return Network buffer if successful, NULL otherwise.
  */
-struct net_buf *net_pkt_get_reserve_rx_data(u16_t reserve_head,
-					    s32_t timeout);
+struct net_buf *net_pkt_get_reserve_rx_data(s32_t timeout);
 
 /**
- * @brief Get TX DATA buffer from pool but also reserve headroom for
- * potential headers. Normally you should use net_pkt_get_frag() instead.
+ * @brief Get TX DATA buffer from pool.
+ * Normally you should use net_pkt_get_frag() instead.
  *
  * @details Normally this version is not useful for applications
  * but is mainly used by network fragmentation code.
  *
- * @param reserve_head How many bytes to reserve for headroom.
  * @param timeout Affects the action taken should the net buf pool be empty.
  *        If K_NO_WAIT, then return immediately. If K_FOREVER, then
  *        wait as long as necessary. Otherwise, wait up to the specified
@@ -965,8 +976,7 @@ struct net_buf *net_pkt_get_reserve_rx_data(u16_t reserve_head,
  *
  * @return Network buffer if successful, NULL otherwise.
  */
-struct net_buf *net_pkt_get_reserve_tx_data(u16_t reserve_head,
-					    s32_t timeout);
+struct net_buf *net_pkt_get_reserve_tx_data(s32_t timeout);
 
 /**
  * @brief Get a data fragment that might be from user specific
@@ -1052,7 +1062,7 @@ void net_pkt_frag_add(struct net_pkt *pkt, struct net_buf *frag);
  */
 void net_pkt_frag_insert(struct net_pkt *pkt, struct net_buf *frag);
 
-#endif /* CONFIG_NET_DEBUG_NET_PKT */
+#endif /* CONFIG_NET_PKT_LOG_LEVEL >= LOG_LEVEL_DBG */
 
 /**
  * @brief Copy a packet fragment list while reserving some extra space
@@ -1060,9 +1070,9 @@ void net_pkt_frag_insert(struct net_pkt *pkt, struct net_buf *frag);
  *
  * @param pkt Network packet.
  * @param amount Max amount of data to be copied.
- * @param reserve Amount of extra data (this is not link layer header) in the
- * first data fragment that is returned. The function will copy the original
- * buffer right after the reserved bytes in the first destination fragment.
+ * @param reserve Amount of extra data in the first data fragment that is
+ * returned. The function will copy the original buffer right after the
+ * reserved bytes in the first destination fragment.
  * @param timeout Affects the action taken should the net buf pool be empty.
  *        If K_NO_WAIT, then return immediately. If K_FOREVER, then
  *        wait as long as necessary. Otherwise, wait up to the specified
@@ -1078,9 +1088,9 @@ struct net_buf *net_pkt_copy(struct net_pkt *pkt, size_t amount,
  * in destination buffer before a copy.
  *
  * @param pkt Network packet.
- * @param reserve Amount of extra data (this is not link layer header) in the
- * first data fragment that is returned. The function will copy the original
- * buffer right after the reserved bytes in the first destination fragment.
+ * @param reserve Amount of extra data in the first data fragment that is
+ * returned. The function will copy the original buffer right after the
+ * reserved bytes in the first destination fragment.
  * @param timeout Affects the action taken should the net buf pool be empty.
  *        If K_NO_WAIT, then return immediately. If K_FOREVER, then
  *        wait as long as necessary. Otherwise, wait up to the specified
@@ -1089,8 +1099,7 @@ struct net_buf *net_pkt_copy(struct net_pkt *pkt, size_t amount,
  * @return New fragment list if successful, NULL otherwise.
  */
 static inline struct net_buf *net_pkt_copy_all(struct net_pkt *pkt,
-					       size_t reserve,
-					       s32_t timeout)
+					       size_t reserve, s32_t timeout)
 {
 	return net_pkt_copy(pkt, net_buf_frags_len(pkt->frags),
 			    reserve, timeout);
@@ -1113,21 +1122,19 @@ int net_frag_linear_copy(struct net_buf *dst, struct net_buf *src,
 			 u16_t offset, u16_t len);
 
 /**
- * @brief Copy len bytes from src starting from offset to dst buffer
+ * @brief Copy bytes from src packet starting at offset to linear buffer
  *
- * This routine assumes that dst is large enough to store @a len bytes
- * starting from offset at src.
+ * This routine behaves is a convenience wrapper for @ref net_buf_linearize .
  *
  * @param dst Destination buffer
- * @param dst_len Destination buffer max length
- * @param src Source buffer that may be fragmented
- * @param offset Starting point to copy from
+ * @param dst_len Destination buffer length
+ * @param src Source packet with fragmented net_buf chain
+ * @param offset Starting offset to copy from
  * @param len Number of bytes to copy
- * @return number of bytes copied if everything is ok
- * @return -ENOMEM on error
+ * @return number of bytes actually copied
  */
-int net_frag_linearize(u8_t *dst, size_t dst_len,
-		       struct net_pkt *src, u16_t offset, u16_t len);
+size_t net_frag_linearize(void *dst, size_t dst_len,
+			  struct net_pkt *src, size_t offset, size_t len);
 
 /**
  * @brief Compact the fragment list of a packet.
@@ -1418,7 +1425,7 @@ struct net_buf *net_frag_read(struct net_buf *frag, u16_t offset,
  * @details Skip N number of bytes starting from fragment's offset. If the total
  * length of data is placed in multiple fragments, this function will skip from
  * all fragments until it reaches N number of bytes. This function is useful
- * when unwanted data (e.g. reserved or not supported data in message) is part
+ * when unwanted data (e.g. not supported data in message) is part
  * of fragment and we want to skip it.
  *
  * @param frag Network buffer fragment.
@@ -1850,7 +1857,7 @@ int net_pkt_get_dst_addr(struct net_pkt *pkt,
 			 struct sockaddr *addr,
 			 socklen_t addrlen);
 
-#if defined(CONFIG_NET_DEBUG_NET_PKT)
+#if defined(CONFIG_NET_DEBUG_NET_PKT_ALLOC)
 /**
  * @brief Debug helper to print out the buffer allocations
  */
@@ -1872,7 +1879,7 @@ const char *net_pkt_pool2str(struct net_buf_pool *pool);
 
 #else
 #define net_pkt_print(...)
-#endif /* CONFIG_NET_DEBUG_NET_PKT */
+#endif /* CONFIG_NET_PKT_LOG_LEVEL >= LOG_LEVEL_DBG */
 
 /**
  * @}

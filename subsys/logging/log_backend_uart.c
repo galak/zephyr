@@ -12,7 +12,7 @@
 #include <uart.h>
 #include <assert.h>
 
-int char_out(u8_t *data, size_t length, void *ctx)
+static int char_out(u8_t *data, size_t length, void *ctx)
 {
 	struct device *dev = (struct device *)ctx;
 
@@ -32,7 +32,7 @@ static void put(const struct log_backend *const backend,
 {
 	log_msg_get(msg);
 
-	u32_t flags = 0;
+	u32_t flags = LOG_OUTPUT_FLAG_LEVEL | LOG_OUTPUT_FLAG_TIMESTAMP;
 
 	if (IS_ENABLED(CONFIG_LOG_BACKEND_SHOW_COLOR)) {
 		flags |= LOG_OUTPUT_FLAG_COLORS;
@@ -48,7 +48,7 @@ static void put(const struct log_backend *const backend,
 
 }
 
-void log_backend_uart_init(void)
+static void log_backend_uart_init(void)
 {
 	struct device *dev;
 
@@ -60,12 +60,21 @@ void log_backend_uart_init(void)
 
 static void panic(struct log_backend const *const backend)
 {
+	log_output_flush(&log_output);
+}
+
+static void dropped(const struct log_backend *const backend, u32_t cnt)
+{
+	ARG_UNUSED(backend);
+
+	log_output_dropped_process(&log_output, cnt);
 }
 
 const struct log_backend_api log_backend_uart_api = {
 	.put = put,
 	.panic = panic,
 	.init = log_backend_uart_init,
+	.dropped = dropped,
 };
 
-LOG_BACKEND_DEFINE(log_backend_uart, log_backend_uart_api);
+LOG_BACKEND_DEFINE(log_backend_uart, log_backend_uart_api, true);

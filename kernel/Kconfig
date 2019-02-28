@@ -9,6 +9,10 @@
 
 menu "General Kernel Options"
 
+module = KERNEL
+module-str = kernel
+source "subsys/logging/Kconfig.template.log_config"
+
 config MULTITHREADING
 	bool "Multi-threading"
 	default y
@@ -124,6 +128,7 @@ config SCHED_DEADLINE
 
 config MAIN_STACK_SIZE
 	int "Size of stack for initialization and main thread"
+	default 2048 if COVERAGE_GCOV
 	default 512 if ZTEST
 	default 1024
 	help
@@ -135,6 +140,7 @@ config MAIN_STACK_SIZE
 
 config IDLE_STACK_SIZE
 	int "Size of stack for idle thread"
+	default 512 if COVERAGE_GCOV
 	default 1024 if XTENSA
 	default 512 if RISCV32
 	default 320 if ARC || (ARM && CPU_HAS_FPU)
@@ -283,7 +289,7 @@ config INIT_STACKS
 	  This option instructs the kernel to initialize stack areas with a
 	  known value (0xaa) before they are first used, so that the high
 	  water mark can be easily determined. This applies to the stack areas
-	  for threads.
+	  for threads, as well as to the interrupt stack.
 
 config KERNEL_DEBUG
 	bool "Kernel debugging"
@@ -300,9 +306,7 @@ config BOOT_BANNER
 	select PRINTK
 	select EARLY_CONSOLE
 	help
-	  This option outputs a banner to the console device during boot up. It
-	  also embeds a date & time stamp in the kernel if the BUILD_TIMESTAMP
-	  option is enabled.
+	  This option outputs a banner to the console device during boot up.
 
 config BOOT_DELAY
 	int "Boot delay in milliseconds"
@@ -316,13 +320,6 @@ config BOOT_DELAY
 	  receive before it actually gets data. A similar effect can be
 	  achieved by waiting for DCD on the serial port--however, not
 	  all serial ports have DCD.
-
-config BUILD_TIMESTAMP
-	bool "Build Timestamp"
-	help
-	  Record a timestamp from the build and add it to the boot banner.
-	  Note that this will make the build unreproducible: building
-	  Zephyr twice will result in different binaries.
 
 config INT_LATENCY_BENCHMARK
 	bool "Interrupt latency metrics [EXPERIMENTAL]"
@@ -348,6 +345,11 @@ config THREAD_MONITOR
 	  This option instructs the kernel to maintain a list of all threads
 	  (excluding those that have not yet started or have already
 	  terminated).
+
+config THREAD_NAME
+	bool "Thread name [EXPERIMENTAL]"
+	help
+	  This option allows to set a name for a thread.
 endmenu
 
 menu "Work Queue Options"
@@ -434,7 +436,7 @@ config POLL
 	bool "Async I/O Framework"
 	help
 	  Asynchronous notification framework. Enable the k_poll() and
-	  k_poll_signal() APIs.  The former can wait on multiple events
+	  k_poll_signal_raise() APIs.  The former can wait on multiple events
 	  concurrently, which can be either directly triggered or triggered by
 	  the availability of some kernel objects (semaphores and fifos).
 
@@ -483,6 +485,18 @@ config ARCH_HAS_CUSTOM_SWAP_TO_MAIN
 	  the _main() thread, but instead must do something custom. It must
 	  enable this option in that case.
 
+config SWAP_NONATOMIC
+	bool
+	help
+	  On some architectures, the _Swap() primitive cannot be made
+	  atomic with respect to the irq_lock being released.  That
+	  is, interrupts may be received between the entry to _Swap
+	  and the completion of the context switch.  There are a
+	  handful of workaround cases in the kernel that need to be
+	  enabled when this is true.  Currently, this only happens on
+	  ARM when the PendSV exception priority sits below that of
+	  Zephyr-handled interrupts.
+
 config ARCH_HAS_CUSTOM_BUSY_WAIT
 	bool
 	# hidden
@@ -515,6 +529,11 @@ config SYS_CLOCK_TICKS_PER_SEC
 	  configurations even require calls to compiler built-in functions, and
 	  can require a non-trivial extra amount of stack space (e.g. around 80
 	  bytes on x86).
+
+	  Note that when available and enabled, in "tickless" mode
+	  this config variable specifies the minimum available timing
+	  granularity, not necessarily the number or frequency of
+	  interrupts delivered to the kernel.
 
 config SYS_CLOCK_HW_CYCLES_PER_SEC
 	int "System clock's h/w timer frequency"
@@ -577,12 +596,12 @@ menu "Security Options"
 config RETPOLINE
 	bool "Build with retpolines enabled"
 	default y if !X86_NO_SPECTRE_V2
+	# Currently only implemented for x86
+	depends on X86
 	help
 	  This is recommended on platforms with speculative executions, to protect
 	  against branch target injection (AKA Spectre-V2).  Full description of
 	  how retpolines work can be found here[1].
-
-	  Currently only the x86 port
 
 	  [1] https://support.google.com/faqs/answer/7625886
 
@@ -645,8 +664,10 @@ config MAX_DOMAIN_PARTITIONS
 	  Configure the maximum number of partitions per memory domain.
 
 menu "SMP Options"
+
 config USE_SWITCH
 	bool "Use new-style _arch_switch instead of __swap"
+	depends on USE_SWITCH_SUPPORTED
 	help
 	  The _arch_switch() API is a lower level context switching
 	  primitive than the original __swap mechanism.  It is required
@@ -655,8 +676,16 @@ config USE_SWITCH
 	  architecture provides both, _arch_switch incurs more somewhat
 	  overhead and may be slower.
 
+config USE_SWITCH_SUPPORTED
+	bool
+	help
+	  Indicates whether _arch_switch() API is supported by the
+	  currently enabled platform. This option should be selected by
+	  platforms that implement it.
+
 config SMP
 	bool "Enable symmetric multithreading support"
+	depends on USE_SWITCH
 	help
 	  When true, kernel will be built with SMP support, allowing
 	  more than one CPU to schedule Zephyr tasks at a time.
@@ -669,6 +698,34 @@ config MP_NUM_CPUS
 	  multicpu API and SMP features.
 
 endmenu
+
+config TICKLESS_IDLE
+	# NB: This option is deprecated, see TICKLESS_KERNEL and
+	# https://github.com/zephyrproject-rtos/zephyr/pull/12234
+	bool "Tickless idle"
+	default y if SYS_POWER_MANAGEMENT || TICKLESS_CAPABLE
+	help
+	  This option suppresses periodic system clock interrupts whenever the
+	  kernel becomes idle. This permits the system to remain in a power
+	  saving state for extended periods without having to wake up to
+	  service each tick as it occurs.
+
+config TICKLESS_IDLE_THRESH
+	int "Tickless idle threshold"
+	default 3
+	depends on TICKLESS_IDLE
+	help
+	  This option enables clock interrupt suppression when the kernel idles
+	  for only a short period of time. It specifies the minimum number of
+	  ticks that must occur before the next kernel timer expires in order
+	  for suppression to happen.
+
+config TICKLESS_KERNEL
+	bool "Tickless kernel"
+	default y if TICKLESS_CAPABLE
+	help
+	  This option enables a fully event driven kernel. Periodic system
+	  clock interrupt generation would be stopped at all times.
 
 source "kernel/Kconfig.power_mgmt"
 

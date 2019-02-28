@@ -9,6 +9,7 @@
 #include <init.h>
 #include <wait_q.h>
 #include <syscall_handler.h>
+#include <stdbool.h>
 
 extern struct k_timer _k_timer_list_start[];
 extern struct k_timer _k_timer_list_end[];
@@ -55,8 +56,8 @@ void _timer_expiration_handler(struct _timeout *t)
 	 */
 	if (timer->period > 0) {
 		key = irq_lock();
-		_add_timeout(NULL, &timer->timeout, &timer->wait_q,
-				timer->period);
+		_add_timeout(&timer->timeout, _timer_expiration_handler,
+			     timer->period);
 		irq_unlock(key);
 	}
 
@@ -64,7 +65,7 @@ void _timer_expiration_handler(struct _timeout *t)
 	timer->status += 1;
 
 	/* invoke timer expiry function */
-	if (timer->expiry_fn) {
+	if (timer->expiry_fn != NULL) {
 		timer->expiry_fn(timer);
 	}
 
@@ -93,8 +94,8 @@ void _timer_expiration_handler(struct _timeout *t)
 
 
 void k_timer_init(struct k_timer *timer,
-		  void (*expiry_fn)(struct k_timer *),
-		  void (*stop_fn)(struct k_timer *))
+			 k_timer_expiry_t expiry_fn,
+			 k_timer_stop_t stop_fn)
 {
 	timer->expiry_fn = expiry_fn;
 	timer->stop_fn = stop_fn;
@@ -125,7 +126,8 @@ void _impl_k_timer_start(struct k_timer *timer, s32_t duration, s32_t period)
 	(void)_abort_timeout(&timer->timeout);
 	timer->period = period_in_ticks;
 	timer->status = 0;
-	_add_timeout(NULL, &timer->timeout, &timer->wait_q, duration_in_ticks);
+	_add_timeout(&timer->timeout, _timer_expiration_handler,
+		     duration_in_ticks);
 	irq_unlock(key);
 }
 
@@ -148,7 +150,7 @@ Z_SYSCALL_HANDLER(k_timer_start, timer, duration_p, period_p)
 void _impl_k_timer_stop(struct k_timer *timer)
 {
 	unsigned int key = irq_lock();
-	int inactive = (_abort_timeout(&timer->timeout) == _INACTIVE);
+	bool inactive = (_abort_timeout(&timer->timeout) == _INACTIVE);
 
 	irq_unlock(key);
 
@@ -156,7 +158,7 @@ void _impl_k_timer_stop(struct k_timer *timer)
 		return;
 	}
 
-	if (timer->stop_fn) {
+	if (timer->stop_fn != NULL) {
 		timer->stop_fn(timer);
 	}
 
@@ -201,7 +203,7 @@ u32_t _impl_k_timer_status_sync(struct k_timer *timer)
 	u32_t result = timer->status;
 
 	if (result == 0) {
-		if (timer->timeout.delta_ticks_from_prev != _INACTIVE) {
+		if (timer->timeout.dticks != _INACTIVE) {
 			/* wait for timer to expire or stop */
 			(void)_pend_current_thread(key, &timer->wait_q, K_FOREVER);
 
@@ -224,33 +226,6 @@ u32_t _impl_k_timer_status_sync(struct k_timer *timer)
 #ifdef CONFIG_USERSPACE
 Z_SYSCALL_HANDLER1_SIMPLE(k_timer_status_sync, K_OBJ_TIMER, struct k_timer *);
 #endif
-
-s32_t _timeout_remaining_get(struct _timeout *timeout)
-{
-	unsigned int key = irq_lock();
-	s32_t remaining_ticks;
-
-	if (timeout->delta_ticks_from_prev == _INACTIVE) {
-		remaining_ticks = 0;
-	} else {
-		/*
-		 * compute remaining ticks by walking the timeout list
-		 * and summing up the various tick deltas involved
-		 */
-		struct _timeout *t =
-			(struct _timeout *)sys_dlist_peek_head(&_timeout_q);
-
-		remaining_ticks = t->delta_ticks_from_prev;
-		while (t != timeout) {
-			t = (struct _timeout *)sys_dlist_peek_next(&_timeout_q,
-								   &t->node);
-			remaining_ticks += t->delta_ticks_from_prev;
-		}
-	}
-
-	irq_unlock(key);
-	return __ticks_to_ms(remaining_ticks);
-}
 
 #ifdef CONFIG_USERSPACE
 Z_SYSCALL_HANDLER1_SIMPLE(k_timer_remaining_get, K_OBJ_TIMER, struct k_timer *);

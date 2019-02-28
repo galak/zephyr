@@ -41,6 +41,11 @@ static void configure_nonsecure_control(u32_t spsel_ns, u32_t npriv_ns)
 }
 
 #if defined(CONFIG_ARMV8_M_MAINLINE)
+
+/* Only ARMv8-M Mainline implementations have Non-Secure instances of
+ * Stack Pointer Limit registers.
+ */
+
 void tz_nonsecure_msplim_set(u32_t val)
 {
 	__TZ_set_MSPLIM_NS(val);
@@ -102,6 +107,14 @@ void tz_nonsecure_system_reset_req_block(int block)
 			& SCB_AIRCR_VECTKEY_Msk)
 		| aircr_payload;
 }
+
+#if defined(CONFIG_ARMV7_M_ARMV8_M_FP)
+void tz_nonsecure_fpu_access_enable(void)
+{
+	SCB->NSACR |=
+		(1UL << SCB_NSACR_CP10_Pos) | (1UL << SCB_NSACR_CP11_Pos);
+}
+#endif /* CONFIG_ARMV7_M_ARMV8_M_FP */
 
 void tz_sau_configure(int enable, int allns)
 {

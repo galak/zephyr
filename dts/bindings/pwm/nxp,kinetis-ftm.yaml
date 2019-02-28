@@ -5,7 +5,6 @@
 #
 ---
 title: Kinetis FTM
-id: nxp,kinetis-ftm
 version: 0.1
 
 description: >
@@ -29,4 +28,9 @@ properties:
       category: required
       description: required interrupts
       generation: define
+
+"#cells":
+  - channel
+# period in terms of nanoseconds
+  - period
 ...

@@ -33,16 +33,19 @@ static void _printk_dec_ulong(out_func_t out, void *ctx,
 			      const unsigned long num, enum pad_type padding,
 			      int min_width);
 static void _printk_hex_ulong(out_func_t out, void *ctx,
-			      const unsigned long num, enum pad_type padding,
+			      const unsigned long long num, enum pad_type padding,
 			      int min_width);
 
 /**
  * @brief Default character output routine that does nothing
  * @param c Character to swallow
  *
+ * Note this is defined as a weak symbol, allowing architecture code
+ * to override it where possible to enable very early logging.
+ *
  * @return 0
  */
-static int _nop_char_out(int c)
+ __attribute__((weak)) int z_arch_printk_char_out(int c)
 {
 	ARG_UNUSED(c);
 
@@ -50,7 +53,7 @@ static int _nop_char_out(int c)
 	return 0;
 }
 
-static int (*_char_out)(int) = _nop_char_out;
+int (*_char_out)(int) = z_arch_printk_char_out;
 
 /**
  * @brief Install the character output routine for printk
@@ -176,13 +179,12 @@ void _vprintk(out_func_t out, void *ctx, const char *fmt, va_list ap)
 				  /* Fall through */
 			case 'x':
 			case 'X': {
-				unsigned long x;
+				unsigned long long x;
 
 				if (long_ctr < 2) {
 					x = va_arg(ap, unsigned long);
 				} else {
-					x = (unsigned long)va_arg(ap,
-							unsigned long long);
+					x = va_arg(ap, unsigned long long);
 				}
 
 				_printk_hex_ulong(out, ctx, x, padding,
@@ -236,7 +238,7 @@ struct buf_out_context {
 static void buf_flush(struct buf_out_context *ctx)
 {
 	k_str_out(ctx->buf, ctx->buf_count);
-	ctx->buf_count = 0;
+	ctx->buf_count = 0U;
 }
 
 static int buf_char_out(int c, void *ctx_p)
@@ -343,21 +345,22 @@ void printk(const char *fmt, ...)
 }
 
 /**
- * @brief Output an unsigned long in hex format
+ * @brief Output an unsigned long long in hex format
  *
- * Output an unsigned long on output installed by platform at init time. Should
- * be able to handle an unsigned long of any size, 32 or 64 bit.
+ * Output an unsigned long long on output installed by platform at init time.
+ * Able to print full 64-bit values.
  * @param num Number to output
  *
  * @return N/A
  */
 static void _printk_hex_ulong(out_func_t out, void *ctx,
-			      const unsigned long num, enum pad_type padding,
+			      const unsigned long long num,
+			      enum pad_type padding,
 			      int min_width)
 {
 	int size = sizeof(num) * 2;
 	int found_largest_digit = 0;
-	int remaining = 8; /* 8 digits max */
+	int remaining = 16; /* 16 digits max */
 	int digits = 0;
 
 	for (; size; size--) {

@@ -19,6 +19,7 @@ Summary of logger features:
 - Additional run time filtering on module instance level.
 - Timestamping with user provided function.
 - Dedicated API for dumping data
+- Dedicated API for handling transient strings
 - Panic support - in panic mode logger switches to blocking, in-place
   processing.
 - Printk support - printk message can be redirected to the logger.
@@ -99,6 +100,18 @@ it is not set or set lower than the override value.
 :option:`CONFIG_LOG_MAX_LEVEL`: Maximal (lowest severity) level which is
 compiled in.
 
+:option:`CONFIG_LOG_FUNC_NAME_PREFIX_ERR`: Prepend ERROR log messages with
+function name.
+
+:option:`CONFIG_LOG_FUNC_NAME_PREFIX_WRN`: Prepend WARNING log messages with
+function name.
+
+:option:`CONFIG_LOG_FUNC_NAME_PREFIX_INF`: Prepend INFO log messages with
+function name.
+
+:option:`CONFIG_LOG_FUNC_NAME_PREFIX_DBG`: Prepend DEBUG log messages with
+function name.
+
 :option:`CONFIG_LOG_PRINTK`: Redirect printk calls to the logger.
 
 :option:`CONFIG_LOG_PRINTK_MAX_STRING_LENGTH`: Maximal string length that can
@@ -119,6 +132,12 @@ which handles log processing.
 :option:`CONFIG_LOG_BUFFER_SIZE`: Number of bytes dedicated for the logger
 message pool. Single message capable of storing standard log with up to 3
 arguments or hexdump message with 12 bytes of data take 32 bytes.
+
+:option:`CONFIG_LOG_STRDUP_MAX_STRING`: Longest string that can be duplicated
+using log_strdup().
+
+:option:`CONFIG_LOG_STRDUP_BUF_COUNT`: Number of buffers in the pool used by
+log_strdup().
 
 :option:`CONFIG_LOG_DOMAIN_ID`: Domain ID. Valid in multi-domain systems.
 
@@ -141,23 +160,45 @@ Logging in a module
 In order to use logger in the module, a unique name of a module must be
 specified and module must be registered with the logger core using
 :c:macro:`LOG_MODULE_REGISTER`. Optionally, a compile time log level for the
-module can be specified as well.
+module can be specified as the second parameter. Default log level
+(:option:`CONFIG_LOG_DEFAULT_LEVEL`) is used if custom log level is not
+provided.
 
 .. code-block:: c
 
-   #define LOG_LEVEL CONFIG_FOO_LOG_LEVEL /* From foo module Kconfig */
    #include <logging/log.h>
-   LOG_MODULE_REGISTER(foo); /* One per given log_module_name */
+   LOG_MODULE_REGISTER(foo, CONFIG_FOO_LOG_LEVEL);
 
 If the module consists of multiple files, then ``LOG_MODULE_REGISTER()`` should
 appear in exactly one of them. Each other file should use
 :c:macro:`LOG_MODULE_DECLARE` to declare its membership in the module.
+Optionally, a compile time log level for the module can be specified as
+the second parameter. Default log level (:option:`CONFIG_LOG_DEFAULT_LEVEL`)
+is used if custom log level is not provided.
 
 .. code-block:: c
 
-   #define LOG_LEVEL CONFIG_FOO_LOG_LEVEL /* From foo module Kconfig */
    #include <logging/log.h>
-   LOG_MODULE_DECLARE(foo); /* In all files comprising the module but one */
+   /* In all files comprising the module but one */
+   LOG_MODULE_DECLARE(foo, CONFIG_FOO_LOG_LEVEL);
+
+In order to use logger API in a function implemented in a header file
+:c:macro:`LOG_MODULE_DECLARE` macro must be used in the function body
+before logger API is called. Optionally, a compile time log level for the module
+can be specified as the second parameter. Default log level
+(:option:`CONFIG_LOG_DEFAULT_LEVEL`) is used if custom log level is not
+provided.
+
+.. code-block:: c
+
+   #include <logging/log.h>
+
+   static inline void foo(void)
+   {
+   	LOG_MODULE_DECLARE(foo, CONFIG_FOO_LOG_LEVEL);
+
+   	LOG_INF("foo");
+   }
 
 Dedicated Kconfig template (:file:`subsys/logging/Kconfig.template.log_config`)
 can be used to create local log level configuration.
@@ -207,12 +248,27 @@ In order to use instance level filtering following steps must be performed:
 Note that when logger is disabled logger instance and pointer to that instance
 are not created.
 
-- logger can be used in function
+In order to use the instance logging API in a source file, a compile-time log
+level must be set using :c:macro:`LOG_LEVEL_SET`.
 
 .. code-block:: c
 
+   LOG_LEVEL_SET(CONFIG_FOO_LOG_LEVEL);
+
    void foo_init(foo_object *f)
    {
+   	LOG_INST_INF(f->log, "Initialized.");
+   }
+
+In order to use the instance logging API in a header file, a compile-time log
+level must be set using :c:macro:`LOG_LEVEL_SET`.
+
+.. code-block:: c
+
+   static inline void foo_init(foo_object *f)
+   {
+   	LOG_LEVEL_SET(CONFIG_FOO_LOG_LEVEL);
+
    	LOG_INST_INF(f->log, "Initialized.");
    }
 
@@ -347,6 +403,30 @@ the message), and severity level. Once all backends are iterated, the message
 is considered processed by the logger, but the message may still be in use by a
 backend.
 
+.. _logger_strings:
+
+Logging strings
+===============
+Logger stores the address of a log message string argument passed to it. Because
+a string variable argument could be transient, allocated on the stack, or
+modifiable, logger provides a mechanism and a dedicated buffer pool to hold
+copies of strings.  The buffer size and count is configurable
+(see :option:`CONFIG_LOG_STRDUP_MAX_STRING` and
+:option:`CONFIG_LOG_STRDUP_BUF_COUNT`).
+
+If a string argument is transient, the user must call cpp:func:`log_strdup` to
+duplicate the passed string into a buffer from the pool. See the examples below.
+If a strdup buffer cannot be allocated, a warning message is logged and an error
+code returned indicating :option:`CONFIG_LOG_STRDUP_BUF_COUNT` should be
+increased. Buffers are freed together with the log message.
+
+.. code-block:: c
+
+   char local_str[] = "abc";
+
+   LOG_INF("logging transient string: %s", log_strdup(local_str));
+   local_str[0] = '\0'; /* String can be modified, logger will use duplicate."
+
 Logger backends
 ===============
 
@@ -396,24 +476,19 @@ Example message formatted using :cpp:func:`log_output_msg_process`.
    }
 
 Logger backends are registered to the logger using
-:c:macro:`LOG_BACKEND_DEFINE` macro. The macro creates an instance in the dedicated
-memory section. Backends can be dynamically enabled
+:c:macro:`LOG_BACKEND_DEFINE` macro. The macro creates an instance in the
+dedicated memory section. Backends can be dynamically enabled
 (:cpp:func:`log_backend_enable`) and disabled.
 
 Limitations
 ***********
 
-The Logger architecture implies following limitations:
+The Logger architecture has the following limitations:
 
-- Using *%s* for strings which content may be changed before log is processed
-  e.g. strings allocated on stack because logger is storing only argument value
-  and does not perform any string analysis to detect that argument is a
-  pointer. It is recommended to use hexdump in that case. Optionally, user can
-  enable in place processing :option:`CONFIG_LOG_INPLACE_PROCESS`. However,
-  this feature has many limitations and is not recommended when logger is used
-  in multiple contexts.
+- Strings as arguments (*%s*) require special treatment (see
+  :ref:`logger_strings`).
 - Logging double floating point variables is not possible because arguments are
   32 bit values.
-- Number of arguments in the string is limited to 6.
+- Number of arguments in the string is limited to 9.
 
 

@@ -16,6 +16,7 @@
 #if !defined(_ASMLANGUAGE)
 #include <kernel_includes.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,7 +81,7 @@ typedef struct {
 	struct _priq_rb waitq;
 } _wait_q_t;
 
-extern int _priq_rb_lessthan(struct rbnode *a, struct rbnode *b);
+extern bool _priq_rb_lessthan(struct rbnode *a, struct rbnode *b);
 
 #define _WAIT_Q_INIT(wait_q) { { { .lessthan_fn = _priq_rb_lessthan } } }
 
@@ -95,7 +96,7 @@ typedef struct {
 #endif
 
 #ifdef CONFIG_OBJECT_TRACING
-#define _OBJECT_TRACING_NEXT_PTR(type) struct type *__next
+#define _OBJECT_TRACING_NEXT_PTR(type) struct type *__next;
 #define _OBJECT_TRACING_INIT .__next = NULL,
 #else
 #define _OBJECT_TRACING_INIT
@@ -114,7 +115,6 @@ typedef struct {
 struct k_thread;
 struct k_mutex;
 struct k_sem;
-struct k_alert;
 struct k_msgq;
 struct k_mbox;
 struct k_pipe;
@@ -198,7 +198,7 @@ struct _k_object_assignment {
  * Intended to be called as the last statement in kernel object init
  * functions.
  *
- * @param object Address of the kernel object
+ * @param obj Address of the kernel object
  */
 void _k_object_init(void *obj);
 #else
@@ -354,21 +354,6 @@ struct __packed _k_thread_stack_element {
 };
 typedef struct _k_thread_stack_element k_thread_stack_t;
 
-/* timeouts */
-
-struct _timeout;
-typedef void (*_timeout_func_t)(struct _timeout *t);
-
-struct _timeout {
-	sys_dnode_t node;
-	struct k_thread *thread;
-	sys_dlist_t *wait_q;
-	s32_t delta_ticks_from_prev;
-	_timeout_func_t func;
-};
-
-extern s32_t _timeout_remaining_get(struct _timeout *timeout);
-
 /**
  * @typedef k_thread_entry_t
  * @brief Thread entry point function type.
@@ -407,12 +392,10 @@ struct _thread_base {
 		struct rbnode qnode_rb;
 	};
 
-#ifdef CONFIG_WAITQ_SCALABLE
 	/* wait queue on which the thread is pended (needed only for
 	 * trees, not dumb lists)
 	 */
 	_wait_q_t *pended_on;
-#endif
 
 	/* user facing 'thread options'; values defined in include/kernel.h */
 	u8_t user_options;
@@ -539,6 +522,11 @@ struct k_thread {
 	struct k_thread *next_thread;
 #endif
 
+#if defined(CONFIG_THREAD_NAME)
+	/* Thread name */
+	const char *name;
+#endif
+
 #ifdef CONFIG_THREAD_CUSTOM_DATA
 	/** crude thread-local storage */
 	void *custom_data;
@@ -587,7 +575,6 @@ struct k_thread {
 
 typedef struct k_thread _thread_t;
 typedef struct k_thread *k_tid_t;
-#define tcs k_thread
 
 enum execution_context_types {
 	K_ISR = 0,
@@ -602,26 +589,6 @@ enum execution_context_types {
  */
 typedef void (*k_thread_user_cb_t)(const struct k_thread *thread,
 				   void *user_data);
-
-/**
- * @brief Analyze the main, idle, interrupt and system workqueue call stacks
- *
- * This routine calls @ref STACK_ANALYZE on the 4 call stacks declared and
- * maintained by the kernel. The sizes of those 4 call stacks are defined by:
- *
- * CONFIG_MAIN_STACK_SIZE
- * CONFIG_IDLE_STACK_SIZE
- * CONFIG_ISR_STACK_SIZE
- * CONFIG_SYSTEM_WORKQUEUE_STACK_SIZE
- *
- * @note CONFIG_INIT_STACKS and CONFIG_PRINTK must be set for this function to
- * produce output.
- *
- * @return N/A
- *
- * @deprecated This API is deprecated.  Use k_thread_foreach().
- */
-__deprecated extern void k_call_stacks_analyze(void);
 
 /**
  * @brief Iterate over all the threads in the system.
@@ -756,21 +723,21 @@ extern FUNC_NORETURN void k_thread_user_mode_enter(k_thread_entry_t entry,
 						   void *p3);
 
 /**
- * @brief Grant a thread access to a NULL-terminated  set of kernel objects
+ * @brief Grant a thread access to a set of kernel objects
  *
  * This is a convenience function. For the provided thread, grant access to
  * the remaining arguments, which must be pointers to kernel objects.
- * The final argument must be a NULL.
  *
  * The thread object must be initialized (i.e. running). The objects don't
  * need to be.
+ * Note that NULL shouldn't be passed as an argument.
  *
  * @param thread Thread to grant access to objects
- * @param ... NULL-terminated list of kernel object pointers
+ * @param ... list of kernel object pointers
  * @req K-THREAD-004
  */
-extern void __attribute__((sentinel))
-	k_thread_access_grant(struct k_thread *thread, ...);
+#define k_thread_access_grant(thread, ...) \
+	FOR_EACH_FIXED_ARG(k_object_access_grant, thread, __VA_ARGS__)
 
 /**
  * @brief Assign a resource memory pool to a thread
@@ -818,9 +785,11 @@ void k_thread_system_pool_assign(struct k_thread *thread);
  *
  * @param duration Number of milliseconds to sleep.
  *
- * @return N/A
+ * @return Zero if the requested time has elapsed or the number of milliseconds
+ * left to sleep, if thread was woken up by \ref k_wakeup call.
+ *
  */
-__syscall void k_sleep(s32_t duration);
+__syscall s32_t k_sleep(s32_t duration);
 
 /**
  * @brief Cause the current thread to busy wait.
@@ -830,7 +799,7 @@ __syscall void k_sleep(s32_t duration);
  *
  * @return N/A
  */
-extern void k_busy_wait(u32_t usec_to_wait);
+__syscall void k_busy_wait(u32_t usec_to_wait);
 
 /**
  * @brief Yield the current thread.
@@ -866,21 +835,6 @@ __syscall void k_wakeup(k_tid_t thread);
  * @req K-THREAD-013
  */
 __syscall k_tid_t k_current_get(void);
-
-/**
- * @brief Cancel thread performing a delayed start.
- *
- * This routine prevents @a thread from executing if it has not yet started
- * execution. The thread must be re-spawned before it will execute.
- *
- * @param thread ID of thread to cancel.
- *
- * @retval 0 Thread spawning canceled.
- * @retval -EINVAL Thread has already started executing.
- *
- * @deprecated This API is deprecated.  Use k_thread_abort().
- */
-__deprecated __syscall int k_thread_cancel(k_tid_t thread);
 
 /**
  * @brief Abort a thread.
@@ -934,11 +888,12 @@ struct _static_thread_data {
 	u32_t init_options;
 	s32_t init_delay;
 	void (*init_abort)(void);
+	const char *init_name;
 };
 
 #define _THREAD_INITIALIZER(thread, stack, stack_size,           \
 			    entry, p1, p2, p3,                   \
-			    prio, options, delay, abort, groups) \
+			    prio, options, delay, abort, tname)  \
 	{                                                        \
 	.init_thread = (thread),				 \
 	.init_stack = (stack),					 \
@@ -951,6 +906,7 @@ struct _static_thread_data {
 	.init_options = (options),                               \
 	.init_delay = (delay),                                   \
 	.init_abort = (abort),                                   \
+	.init_name = STRINGIFY(tname),                           \
 	}
 
 /**
@@ -997,7 +953,7 @@ struct _static_thread_data {
 		_THREAD_INITIALIZER(&_k_thread_obj_##name,		 \
 				    _k_thread_stack_##name, stack_size,  \
 				entry, p1, p2, p3, prio, options, delay, \
-				NULL, 0);				 \
+				NULL, name);				 	 \
 	const k_tid_t name = (k_tid_t)&_k_thread_obj_##name
 
 /**
@@ -1153,10 +1109,10 @@ extern void k_sched_time_slice_set(s32_t slice, int prio);
  *
  * @note Can be called by ISRs.
  *
- * @return 0 if invoked by a thread.
- * @return Non-zero if invoked by an ISR.
+ * @return false if invoked by a thread.
+ * @return true if invoked by an ISR.
  */
-extern int k_is_in_isr(void);
+extern bool k_is_in_isr(void);
 
 /**
  * @brief Determine if code is running in a preemptible thread.
@@ -1244,10 +1200,27 @@ __syscall void k_thread_custom_data_set(void *value);
 __syscall void *k_thread_custom_data_get(void);
 
 /**
+ * @brief Set current thread name
+ *
+ * Set the name of the thread to be used when THREAD_MONITOR is enabled for
+ * tracing and debugging.
+ *
+ */
+__syscall void k_thread_name_set(k_tid_t thread_id, const char *value);
+
+/**
+ * @brief Get thread name
+ *
+ * Get the name of a thread
+ *
+ * @param thread_id Thread ID
+ *
+ */
+__syscall const char *k_thread_name_get(k_tid_t thread_id);
+
+/**
  * @}
  */
-
-#include <sys_clock.h>
 
 /**
  * @addtogroup clock_apis
@@ -1330,81 +1303,6 @@ __syscall void *k_thread_custom_data_get(void);
  * @cond INTERNAL_HIDDEN
  */
 
-/* kernel clocks */
-
-#ifdef CONFIG_SYS_CLOCK_EXISTS
-
-/*
- * If timer frequency is known at compile time, a simple (32-bit)
- * tick <-> ms conversion could be used for some combinations of
- * hardware timer frequency and tick rate. Otherwise precise
- * (64-bit) calculations are used.
- */
-
-#if !defined(CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME)
-#if	(sys_clock_hw_cycles_per_sec % sys_clock_ticks_per_sec) != 0
-	#define _NEED_PRECISE_TICK_MS_CONVERSION
-#elif	(MSEC_PER_SEC % sys_clock_ticks_per_sec) != 0
-	#define _NON_OPTIMIZED_TICKS_PER_SEC
-#endif
-#endif
-
-#if	defined(CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME) || \
-	defined(_NON_OPTIMIZED_TICKS_PER_SEC)
-	#define _NEED_PRECISE_TICK_MS_CONVERSION
-#endif
-#endif
-
-static ALWAYS_INLINE s32_t _ms_to_ticks(s32_t ms)
-{
-#ifdef CONFIG_SYS_CLOCK_EXISTS
-
-#ifdef _NEED_PRECISE_TICK_MS_CONVERSION
-	/* use 64-bit math to keep precision */
-	return (s32_t)ceiling_fraction(
-		(s64_t)ms * sys_clock_hw_cycles_per_sec,
-		((s64_t)MSEC_PER_SEC * sys_clock_hw_cycles_per_sec) /
-		sys_clock_ticks_per_sec);
-#else
-	/* simple division keeps precision */
-	s32_t ms_per_tick = MSEC_PER_SEC / sys_clock_ticks_per_sec;
-
-	return (s32_t)ceiling_fraction(ms, ms_per_tick);
-#endif
-
-#else
-	__ASSERT(ms == 0, "ms not zero");
-	return 0;
-#endif
-}
-
-static inline s64_t __ticks_to_ms(s64_t ticks)
-{
-#ifdef CONFIG_SYS_CLOCK_EXISTS
-
-#ifdef _NEED_PRECISE_TICK_MS_CONVERSION
-	/* use 64-bit math to keep precision */
-	return (u64_t)ticks * MSEC_PER_SEC / sys_clock_ticks_per_sec;
-#else
-	/* simple multiplication keeps precision */
-	u32_t ms_per_tick = MSEC_PER_SEC / sys_clock_ticks_per_sec;
-
-	return (u64_t)ticks * ms_per_tick;
-#endif
-
-#else
-	__ASSERT(ticks == 0, "ticks not zero");
-	return 0;
-#endif
-}
-
-/* added tick needed to account for tick in progress */
-#ifdef CONFIG_TICKLESS_KERNEL
-#define _TICK_ALIGN 0
-#else
-#define _TICK_ALIGN 1
-#endif
-
 struct k_timer {
 	/*
 	 * _timeout structure must be first here if we want to use
@@ -1417,10 +1315,10 @@ struct k_timer {
 	_wait_q_t wait_q;
 
 	/* runs in ISR context */
-	void (*expiry_fn)(struct k_timer *);
+	void (*expiry_fn)(struct k_timer *timer);
 
 	/* runs in the context of the thread that calls k_timer_stop() */
-	void (*stop_fn)(struct k_timer *);
+	void (*stop_fn)(struct k_timer *timer);
 
 	/* timer period */
 	s32_t period;
@@ -1431,15 +1329,13 @@ struct k_timer {
 	/* user-specific data, also used to support legacy features */
 	void *user_data;
 
-	_OBJECT_TRACING_NEXT_PTR(k_timer);
+	_OBJECT_TRACING_NEXT_PTR(k_timer)
 };
 
 #define _K_TIMER_INITIALIZER(obj, expiry, stop) \
 	{ \
-	.timeout.delta_ticks_from_prev = _INACTIVE, \
-	.timeout.wait_q = NULL, \
-	.timeout.thread = NULL, \
-	.timeout.func = _timer_expiration_handler, \
+	.timeout.dticks = _INACTIVE, \
+	.timeout.fn = _timer_expiration_handler, \
 	.wait_q = _WAIT_Q_INIT(&obj.wait_q), \
 	.expiry_fn = expiry, \
 	.stop_fn = stop, \
@@ -1590,6 +1486,8 @@ __syscall u32_t k_timer_status_get(struct k_timer *timer);
  */
 __syscall u32_t k_timer_status_sync(struct k_timer *timer);
 
+extern s32_t z_timeout_remaining(struct _timeout *timeout);
+
 /**
  * @brief Get time remaining before a timer next expires.
  *
@@ -1600,11 +1498,11 @@ __syscall u32_t k_timer_status_sync(struct k_timer *timer);
  *
  * @return Remaining time (in milliseconds).
  */
-__syscall s32_t k_timer_remaining_get(struct k_timer *timer);
+__syscall u32_t k_timer_remaining_get(struct k_timer *timer);
 
-static inline s32_t _impl_k_timer_remaining_get(struct k_timer *timer)
+static inline u32_t _impl_k_timer_remaining_get(struct k_timer *timer)
 {
-	return _timeout_remaining_get(&timer->timeout);
+	return (u32_t)__ticks_to_ms(z_timeout_remaining(&timer->timeout));
 }
 
 /**
@@ -1666,26 +1564,16 @@ __syscall s64_t k_uptime_get(void);
 /**
  * @brief Enable clock always on in tickless kernel
  *
- * This routine enables keeping the clock running when
- * there are no timer events programmed in tickless kernel
- * scheduling. This is necessary if the clock is used to track
- * passage of time.
+ * This routine enables keeping the clock running (that is, it always
+ * keeps an active timer interrupt scheduled) when there are no timer
+ * events programmed in tickless kernel scheduling. This is necessary
+ * if the clock is used to track passage of time (e.g. via
+ * k_uptime_get_32()), otherwise the internal hardware counter may
+ * roll over between interrupts.
  *
  * @retval prev_status Previous status of always on flag
  */
-static inline int k_enable_sys_clock_always_on(void)
-{
-#ifdef CONFIG_TICKLESS_KERNEL
-	int prev_status = _sys_clock_always_on;
-
-	_sys_clock_always_on = 1;
-	_enable_sys_clock();
-
-	return prev_status;
-#else
-	return -ENOTSUP;
-#endif
-}
+int k_enable_sys_clock_always_on(void);
 
 /**
  * @brief Disable clock always on in tickless kernel
@@ -1695,12 +1583,7 @@ static inline int k_enable_sys_clock_always_on(void)
  * scheduling. To save power, this routine should be called
  * immediately when clock is not used to track time.
  */
-static inline void k_disable_sys_clock_always_on(void)
-{
-#ifdef CONFIG_TICKLESS_KERNEL
-	_sys_clock_always_on = 0;
-#endif
-}
+void k_disable_sys_clock_always_on(void);
 
 /**
  * @brief Get system uptime (32-bit version).
@@ -1728,7 +1611,16 @@ __syscall u32_t k_uptime_get_32(void);
  *
  * @return Elapsed time.
  */
-extern s64_t k_uptime_delta(s64_t *reftime);
+static inline s64_t k_uptime_delta(s64_t *reftime)
+{
+	s64_t uptime, delta;
+
+	uptime = k_uptime_get();
+	delta = uptime - *reftime;
+	*reftime = uptime;
+
+	return delta;
+}
 
 /**
  * @brief Get elapsed time (32-bit version).
@@ -1746,7 +1638,10 @@ extern s64_t k_uptime_delta(s64_t *reftime);
  *
  * @return Elapsed time.
  */
-extern u32_t k_uptime_delta_32(s64_t *reftime);
+static inline u32_t k_uptime_delta_32(s64_t *reftime)
+{
+	return (u32_t)k_uptime_delta(reftime);
+}
 
 /**
  * @brief Read the hardware clock.
@@ -1774,7 +1669,7 @@ struct k_queue {
 		_POLL_EVENT;
 	};
 
-	_OBJECT_TRACING_NEXT_PTR(k_queue);
+	_OBJECT_TRACING_NEXT_PTR(k_queue)
 };
 
 #define _K_QUEUE_INITIALIZER(obj) \
@@ -1858,7 +1753,7 @@ extern void k_queue_append(struct k_queue *queue, void *data);
  * @retval 0 on success
  * @retval -ENOMEM if there isn't sufficient RAM in the caller's resource pool
  */
-__syscall int k_queue_alloc_append(struct k_queue *queue, void *data);
+__syscall s32_t k_queue_alloc_append(struct k_queue *queue, void *data);
 
 /**
  * @brief Prepend an element to a queue.
@@ -1891,7 +1786,7 @@ extern void k_queue_prepend(struct k_queue *queue, void *data);
  * @retval 0 on success
  * @retval -ENOMEM if there isn't sufficient RAM in the caller's resource pool
  */
-__syscall int k_queue_alloc_prepend(struct k_queue *queue, void *data);
+__syscall s32_t k_queue_alloc_prepend(struct k_queue *queue, void *data);
 
 /**
  * @brief Inserts an element to a queue.
@@ -1978,6 +1873,34 @@ __syscall void *k_queue_get(struct k_queue *queue, s32_t timeout);
 static inline bool k_queue_remove(struct k_queue *queue, void *data)
 {
 	return sys_sflist_find_and_remove(&queue->data_q, (sys_sfnode_t *)data);
+}
+
+/**
+ * @brief Append an element to a queue only if it's not present already.
+ *
+ * This routine appends data item to @a queue. The first 32 bits of the
+ * data item are reserved for the kernel's use. Appending elements to k_queue
+ * relies on sys_slist_is_node_in_list which is not a constant time operation.
+ *
+ * @note Can be called by ISRs
+ *
+ * @param queue Address of the queue.
+ * @param data Address of the data item.
+ *
+ * @return true if data item was added, false if not
+ */
+static inline bool k_queue_unique_append(struct k_queue *queue, void *data)
+{
+	sys_sfnode_t *test;
+
+	SYS_SFLIST_FOR_EACH_NODE(&queue->data_q, test) {
+		if (test == (sys_sfnode_t *) data) {
+			return false;
+		}
+	}
+
+	k_queue_append(queue, data);
+	return true;
 }
 
 /**
@@ -2377,13 +2300,13 @@ struct k_lifo {
 /**
  * @cond INTERNAL_HIDDEN
  */
-#define K_STACK_FLAG_ALLOC	BIT(0)	/* Buffer was allocated */
+#define K_STACK_FLAG_ALLOC	((u8_t)1)	/* Buffer was allocated */
 
 struct k_stack {
 	_wait_q_t wait_q;
 	u32_t *base, *next, *top;
 
-	_OBJECT_TRACING_NEXT_PTR(k_stack);
+	_OBJECT_TRACING_NEXT_PTR(k_stack)
 	u8_t flags;
 };
 
@@ -2421,7 +2344,7 @@ struct k_stack {
  * @req K-STACK-001
  */
 void k_stack_init(struct k_stack *stack,
-		  u32_t *buffer, unsigned int num_entries);
+		  u32_t *buffer, u32_t num_entries);
 
 
 /**
@@ -2439,8 +2362,8 @@ void k_stack_init(struct k_stack *stack,
  * @req K-STACK-001
  */
 
-__syscall int k_stack_alloc_init(struct k_stack *stack,
-				 unsigned int num_entries);
+__syscall s32_t k_stack_alloc_init(struct k_stack *stack,
+				   u32_t num_entries);
 
 /**
  * @brief Release a stack's allocated buffer
@@ -2585,9 +2508,7 @@ extern struct k_work_q k_sys_work_q;
  * @req K-WORK-002
  */
 #define K_WORK_DEFINE(work, work_handler) \
-	struct k_work work \
-		__in_section(_k_work, static, work) = \
-		_K_WORK_INITIALIZER(work_handler)
+	struct k_work work = _K_WORK_INITIALIZER(work_handler)
 
 /**
  * @brief Initialize a work item.
@@ -2603,7 +2524,6 @@ extern struct k_work_q k_sys_work_q;
 static inline void k_work_init(struct k_work *work, k_work_handler_t handler)
 {
 	*work = (struct k_work)_K_WORK_INITIALIZER(handler);
-	_k_object_init(work);
 }
 
 /**
@@ -2637,6 +2557,46 @@ static inline void k_work_submit_to_queue(struct k_work_q *work_q,
 }
 
 /**
+ * @brief Submit a work item to a user mode workqueue
+ *
+ * Submits a work item to a workqueue that runs in user mode. A temporary
+ * memory allocation is made from the caller's resource pool which is freed
+ * once the worker thread consumes the k_work item. The workqueue
+ * thread must have memory access to the k_work item being submitted. The caller
+ * must have permission granted on the work_q parameter's queue object.
+ *
+ * Otherwise this works the same as k_work_submit_to_queue().
+ *
+ * @note Can be called by ISRs.
+ *
+ * @param work_q Address of workqueue.
+ * @param work Address of work item.
+ *
+ * @retval -EBUSY if the work item was already in some workqueue
+ * @retval -ENOMEM if no memory for thread resource pool allocation
+ * @retval 0 Success
+ * @req K-WORK-001
+ */
+static inline int k_work_submit_to_user_queue(struct k_work_q *work_q,
+					      struct k_work *work)
+{
+	int ret = -EBUSY;
+
+	if (!atomic_test_and_set_bit(work->flags, K_WORK_STATE_PENDING)) {
+		ret = k_queue_alloc_append(&work_q->queue, work);
+
+		/* Couldn't insert into the queue. Clear the pending bit
+		 * so the work item can be submitted again
+		 */
+		if (ret != 0) {
+			atomic_clear_bit(work->flags, K_WORK_STATE_PENDING);
+		}
+	}
+
+	return ret;
+}
+
+/**
  * @brief Check if a work item is pending.
  *
  * This routine indicates if work item @a work is pending in a workqueue's
@@ -2646,10 +2606,10 @@ static inline void k_work_submit_to_queue(struct k_work_q *work_q,
  *
  * @param work Address of work item.
  *
- * @return 1 if work item is pending, or 0 if it is not pending.
+ * @return true if work item is pending, or false if it is not pending.
  * @req K-WORK-001
  */
-static inline int k_work_pending(struct k_work *work)
+static inline bool k_work_pending(struct k_work *work)
 {
 	return atomic_test_bit(work->flags, K_WORK_STATE_PENDING);
 }
@@ -2674,6 +2634,30 @@ static inline int k_work_pending(struct k_work *work)
 extern void k_work_q_start(struct k_work_q *work_q,
 			   k_thread_stack_t *stack,
 			   size_t stack_size, int prio);
+
+/**
+ * @brief Start a workqueue in user mode
+ *
+ * This works identically to k_work_q_start() except it is callable from user
+ * mode, and the worker thread created will run in user mode.
+ * The caller must have permissions granted on both the work_q parameter's
+ * thread and queue objects, and the same restrictions on priority apply as
+ * k_thread_create().
+ *
+ * @param work_q Address of workqueue.
+ * @param stack Pointer to work queue thread's stack space, as defined by
+ *		K_THREAD_STACK_DEFINE()
+ * @param stack_size Size of the work queue thread's stack (in bytes), which
+ *		should either be the same constant passed to
+ *		K_THREAD_STACK_DEFINE() or the value of K_THREAD_STACK_SIZEOF().
+ * @param prio Priority of the work queue's thread.
+ *
+ * @return N/A
+ * @req K-WORK-001
+ */
+extern void k_work_q_user_start(struct k_work_q *work_q,
+				k_thread_stack_t *stack,
+				size_t stack_size, int prio);
 
 /**
  * @brief Initialize a delayed work item.
@@ -2824,7 +2808,7 @@ static inline int k_delayed_work_submit(struct k_delayed_work *work,
  */
 static inline s32_t k_delayed_work_remaining_get(struct k_delayed_work *work)
 {
-	return _timeout_remaining_get(&work->timeout);
+	return __ticks_to_ms(z_timeout_remaining(&work->timeout));
 }
 
 /** @} */
@@ -2845,7 +2829,7 @@ struct k_mutex {
 	u32_t lock_count;
 	int owner_orig_prio;
 
-	_OBJECT_TRACING_NEXT_PTR(k_mutex);
+	_OBJECT_TRACING_NEXT_PTR(k_mutex)
 };
 
 /**
@@ -2943,11 +2927,11 @@ __syscall void k_mutex_unlock(struct k_mutex *mutex);
 
 struct k_sem {
 	_wait_q_t wait_q;
-	unsigned int count;
-	unsigned int limit;
+	u32_t count;
+	u32_t limit;
 	_POLL_EVENT;
 
-	_OBJECT_TRACING_NEXT_PTR(k_sem);
+	_OBJECT_TRACING_NEXT_PTR(k_sem)
 };
 
 #define _K_SEM_INITIALIZER(obj, initial_count, count_limit) \
@@ -3087,150 +3071,6 @@ static inline unsigned int _impl_k_sem_count_get(struct k_sem *sem)
 /** @} */
 
 /**
- * @defgroup alert_apis Alert APIs
- * @ingroup kernel_apis
- * @{
- */
-
-/**
- * @typedef k_alert_handler_t
- * @brief Alert handler function type.
- *
- * An alert's alert handler function is invoked by the system workqueue
- * when the alert is signaled. The alert handler function is optional,
- * and is only invoked if the alert has been initialized with one.
- *
- * @param alert Address of the alert.
- *
- * @return 0 if alert has been consumed; non-zero if alert should pend.
- */
-typedef int (*k_alert_handler_t)(struct k_alert *alert);
-
-/** @} */
-
-/**
- * @cond INTERNAL_HIDDEN
- */
-
-#define K_ALERT_DEFAULT NULL
-#define K_ALERT_IGNORE ((void *)(-1))
-
-struct k_alert {
-	k_alert_handler_t handler;
-	atomic_t send_count;
-	struct k_work work_item;
-	struct k_sem sem;
-
-	_OBJECT_TRACING_NEXT_PTR(k_alert);
-};
-
-/**
- * @internal
- */
-extern void _alert_deliver(struct k_work *work);
-
-#define _K_ALERT_INITIALIZER(obj, alert_handler, max_num_pending_alerts) \
-	{ \
-	.handler = (k_alert_handler_t)alert_handler, \
-	.send_count = ATOMIC_INIT(0), \
-	.work_item = _K_WORK_INITIALIZER(_alert_deliver), \
-	.sem = _K_SEM_INITIALIZER(obj.sem, 0, max_num_pending_alerts), \
-	_OBJECT_TRACING_INIT \
-	}
-
-#define K_ALERT_INITIALIZER DEPRECATED_MACRO _K_ALERT_INITIALIZER
-
-/**
- * INTERNAL_HIDDEN @endcond
- */
-
-/**
- * @addtogroup alert_apis
- * @{
- */
-
-/**
- * @def K_ALERT_DEFINE(name, alert_handler, max_num_pending_alerts)
- *
- * @brief Statically define and initialize an alert.
- *
- * The alert can be accessed outside the module where it is defined using:
- *
- * @code extern struct k_alert <name>; @endcode
- *
- * @param name Name of the alert.
- * @param alert_handler Action to take when alert is sent. Specify either
- *        the address of a function to be invoked by the system workqueue
- *        thread, K_ALERT_IGNORE (which causes the alert to be ignored), or
- *        K_ALERT_DEFAULT (which causes the alert to pend).
- * @param max_num_pending_alerts Maximum number of pending alerts.
- *
- * @req K-ALERT-001
- */
-#define K_ALERT_DEFINE(name, alert_handler, max_num_pending_alerts) \
-	struct k_alert name \
-		__in_section(_k_alert, static, name) = \
-		_K_ALERT_INITIALIZER(name, alert_handler, \
-				    max_num_pending_alerts)
-
-/**
- * @brief Initialize an alert.
- *
- * This routine initializes an alert object, prior to its first use.
- *
- * @param alert Address of the alert.
- * @param handler Action to take when alert is sent. Specify either the address
- *                of a function to be invoked by the system workqueue thread,
- *                K_ALERT_IGNORE (which causes the alert to be ignored), or
- *                K_ALERT_DEFAULT (which causes the alert to pend).
- * @param max_num_pending_alerts Maximum number of pending alerts.
- *
- * @return N/A
- * @req K-ALERT-002
- */
-extern void k_alert_init(struct k_alert *alert, k_alert_handler_t handler,
-			 unsigned int max_num_pending_alerts);
-
-/**
- * @brief Receive an alert.
- *
- * This routine receives a pending alert for @a alert.
- *
- * @note Can be called by ISRs, but @a timeout must be set to K_NO_WAIT.
- *
- * @param alert Address of the alert.
- * @param timeout Waiting period to receive the alert (in milliseconds),
- *                or one of the special values K_NO_WAIT and K_FOREVER.
- *
- * @retval 0 Alert received.
- * @retval -EBUSY Returned without waiting.
- * @retval -EAGAIN Waiting period timed out.
- * @req K-ALERT-002
- */
-__syscall int k_alert_recv(struct k_alert *alert, s32_t timeout);
-
-/**
- * @brief Signal an alert.
- *
- * This routine signals @a alert. The action specified for @a alert will
- * be taken, which may trigger the execution of an alert handler function
- * and/or cause the alert to pend (assuming the alert has not reached its
- * maximum number of pending alerts).
- *
- * @note Can be called by ISRs.
- *
- * @param alert Address of the alert.
- *
- * @return N/A
- * @req K-ALERT-002
- */
-__syscall void k_alert_send(struct k_alert *alert);
-
-/**
- * @}
- */
-
-/**
  * @defgroup msgq_apis Message Queue APIs
  * @ingroup kernel_apis
  * @{
@@ -3249,7 +3089,7 @@ struct k_msgq {
 	char *write_ptr;
 	u32_t used_msgs;
 
-	_OBJECT_TRACING_NEXT_PTR(k_msgq);
+	_OBJECT_TRACING_NEXT_PTR(k_msgq)
 	u8_t flags;
 };
 /**
@@ -3404,6 +3244,23 @@ __syscall int k_msgq_put(struct k_msgq *q, void *data, s32_t timeout);
 __syscall int k_msgq_get(struct k_msgq *q, void *data, s32_t timeout);
 
 /**
+ * @brief Peek/read a message from a message queue.
+ *
+ * This routine reads a message from message queue @a q in a "first in,
+ * first out" manner and leaves the message in the queue.
+ *
+ * @note Can be called by ISRs.
+ *
+ * @param q Address of the message queue.
+ * @param data Address of area to hold the message read from the queue.
+ *
+ * @retval 0 Message read.
+ * @retval -ENOMSG Returned when the queue has no message.
+ * @req K-MSGQ-002
+ */
+__syscall int k_msgq_peek(struct k_msgq *q, void *data);
+
+/**
  * @brief Purge a message queue.
  *
  * This routine discards all unreceived messages in a message queue's ring
@@ -3527,7 +3384,7 @@ struct k_mbox {
 	_wait_q_t tx_msg_queue;
 	_wait_q_t rx_msg_queue;
 
-	_OBJECT_TRACING_NEXT_PTR(k_mbox);
+	_OBJECT_TRACING_NEXT_PTR(k_mbox)
 };
 /**
  * @cond INTERNAL_HIDDEN
@@ -3711,7 +3568,7 @@ struct k_pipe {
 		_wait_q_t      writers; /**< Writer wait queue */
 	} wait_q;
 
-	_OBJECT_TRACING_NEXT_PTR(k_pipe);
+	_OBJECT_TRACING_NEXT_PTR(k_pipe)
 	u8_t	       flags;		/**< Flags */
 };
 
@@ -3885,7 +3742,7 @@ struct k_mem_slab {
 	char *free_list;
 	u32_t num_used;
 
-	_OBJECT_TRACING_NEXT_PTR(k_mem_slab);
+	_OBJECT_TRACING_NEXT_PTR(k_mem_slab)
 };
 
 #define _K_MEM_SLAB_INITIALIZER(obj, slab_buffer, slab_block_size, \
@@ -4201,15 +4058,15 @@ extern void *k_calloc(size_t nmemb, size_t size);
 /* polling API - PRIVATE */
 
 #ifdef CONFIG_POLL
-#define _INIT_OBJ_POLL_EVENT(obj) do { (obj)->poll_event = NULL; } while ((0))
+#define _INIT_OBJ_POLL_EVENT(obj) do { (obj)->poll_event = NULL; } while (false)
 #else
-#define _INIT_OBJ_POLL_EVENT(obj) do { } while ((0))
+#define _INIT_OBJ_POLL_EVENT(obj) do { } while (false)
 #endif
 
 /* private - implementation data created as needed, per-type */
 struct _poller {
 	struct k_thread *thread;
-	volatile int is_polling;
+	volatile bool is_polling;
 };
 
 /* private - types bit positions */
@@ -4217,7 +4074,7 @@ enum _poll_types_bits {
 	/* can be used to ignore an event */
 	_POLL_TYPE_IGNORE,
 
-	/* to be signaled by k_poll_signal() */
+	/* to be signaled by k_poll_signal_raise() */
 	_POLL_TYPE_SIGNAL,
 
 	/* semaphore availability */
@@ -4236,7 +4093,7 @@ enum _poll_states_bits {
 	/* default state when creating event */
 	_POLL_STATE_NOT_READY,
 
-	/* signaled by k_poll_signal() */
+	/* signaled by k_poll_signal_raise() */
 	_POLL_STATE_SIGNALED,
 
 	/* semaphore is available */
@@ -4306,7 +4163,7 @@ struct k_poll_signal {
 	 */
 	unsigned int signaled;
 
-	/* custom result value passed to k_poll_signal() if needed */
+	/* custom result value passed to k_poll_signal_raise() if needed */
 	int result;
 };
 
@@ -4441,7 +4298,7 @@ __syscall int k_poll(struct k_poll_event *events, int num_events,
 /**
  * @brief Initialize a poll signal object.
  *
- * Ready a poll signal object to be signaled via k_poll_signal().
+ * Ready a poll signal object to be signaled via k_poll_signal_raise().
  *
  * @param signal A poll signal.
  *
@@ -4486,7 +4343,7 @@ __syscall void k_poll_signal_check(struct k_poll_signal *signal,
  * made ready to run. A @a result value can be specified.
  *
  * The poll signal contains a 'signaled' field that, when set by
- * k_poll_signal(), stays set until the user sets it back to 0 with
+ * k_poll_signal_raise(), stays set until the user sets it back to 0 with
  * k_poll_signal_reset(). It thus has to be reset by the user before being
  * passed again to k_poll() or k_poll() will consider it being signaled, and
  * will return immediately.
@@ -4499,7 +4356,7 @@ __syscall void k_poll_signal_check(struct k_poll_signal *signal,
  * @req K-POLL-001
  */
 
-__syscall int k_poll_signal(struct k_poll_signal *signal, int result);
+__syscall int k_poll_signal_raise(struct k_poll_signal *signal, int result);
 
 /**
  * @internal
@@ -4558,7 +4415,7 @@ extern void _sys_power_save_idle_exit(s32_t ticks);
 		printk("@ %s:%d:\n", __FILE__,  __LINE__); \
 		_NanoFatalErrorHandler(reason, &_default_esf); \
 		CODE_UNREACHABLE; \
-	} while (0)
+	} while (false)
 
 #endif /* _ARCH__EXCEPT */
 
@@ -4600,13 +4457,13 @@ extern void _init_static_threads(void);
 /**
  * @internal
  */
-#define _init_static_threads() do { } while ((0))
+#define _init_static_threads() do { } while (false)
 #endif
 
 /**
  * @internal
  */
-extern int _is_thread_essential(void);
+extern bool _is_thread_essential(void);
 /**
  * @internal
  */
@@ -4758,18 +4615,6 @@ static inline char *K_THREAD_STACK_BUFFER(k_thread_stack_t *sym)
  */
 
 /**
- * @def MEM_PARTITION_ENTRY
- * @brief Used to declare a memory partition entry
- * @req K-MP-001
- */
-#define MEM_PARTITION_ENTRY(_start, _size, _attr) \
-	{\
-		.start = _start, \
-		.size = _size, \
-		.attr = _attr, \
-	}
-
-/**
  * @def K_MEM_PARTITION_DEFINE
  * @brief Used to declare a memory partition
  * @req K-MP-001
@@ -4778,11 +4623,11 @@ static inline char *K_THREAD_STACK_BUFFER(k_thread_stack_t *sym)
 #define K_MEM_PARTITION_DEFINE(name, start, size, attr) \
 	_ARCH_MEM_PARTITION_ALIGN_CHECK(start, size); \
 	__kernel struct k_mem_partition name =\
-		MEM_PARTITION_ENTRY((u32_t)start, size, attr)
+		{ (u32_t)start, size, attr}
 #else
 #define K_MEM_PARTITION_DEFINE(name, start, size, attr) \
 	__kernel struct k_mem_partition name =\
-		MEM_PARTITION_ENTRY((u32_t)start, size, attr)
+		{ (u32_t)start, size, attr}
 #endif /* _ARCH_MEM_PARTITION_ALIGN_CHECK */
 
 /* memory partition */
@@ -4791,13 +4636,13 @@ struct k_mem_partition {
 	u32_t start;
 	/* size of memory partition */
 	u32_t size;
-#ifdef CONFIG_USERSPACE
+#if defined(CONFIG_MEMORY_PROTECTION)
 	/* attribute of memory partition */
 	k_mem_partition_attr_t attr;
-#endif	/* CONFIG_USERSPACE */
+#endif /* CONFIG_MEMORY_PROTECTION */
 };
 
-/* memory domian
+/* memory domain
  * Note: Always declare this structure with __kernel prefix
  */
 struct k_mem_domain {
@@ -4917,66 +4762,11 @@ __syscall void k_str_out(char *c, size_t n);
  * @param arg Untyped argument to be passed to "fn"
  */
 extern void _arch_start_cpu(int cpu_num, k_thread_stack_t *stack, int sz,
-			    void (*fn)(int, void *), void *arg);
+			    void (*fn)(int key, void *data), void *arg);
 
 #ifdef __cplusplus
 }
 #endif
-
-#if defined(CONFIG_CPLUSPLUS) && defined(__cplusplus)
-/*
- * Define new and delete operators.
- * At this moment, the operators do nothing since objects are supposed
- * to be statically allocated.
- */
-inline void operator delete(void *ptr)
-{
-	(void)ptr;
-}
-
-inline void operator delete[](void *ptr)
-{
-	(void)ptr;
-}
-
-inline void *operator new(size_t size)
-{
-	(void)size;
-	return NULL;
-}
-
-inline void *operator new[](size_t size)
-{
-	(void)size;
-	return NULL;
-}
-
-/* Placement versions of operator new and delete */
-inline void operator delete(void *ptr1, void *ptr2)
-{
-	(void)ptr1;
-	(void)ptr2;
-}
-
-inline void operator delete[](void *ptr1, void *ptr2)
-{
-	(void)ptr1;
-	(void)ptr2;
-}
-
-inline void *operator new(size_t size, void *ptr)
-{
-	(void)size;
-	return ptr;
-}
-
-inline void *operator new[](size_t size, void *ptr)
-{
-	(void)size;
-	return ptr;
-}
-
-#endif /* defined(CONFIG_CPLUSPLUS) && defined(__cplusplus) */
 
 #include <tracing.h>
 #include <syscalls/kernel.h>

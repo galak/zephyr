@@ -36,18 +36,20 @@
 		gpio-5 = &gpio5;
 		gpio-6 = &gpio6;
 		led0 = &red_led;
+		mu-b = &mub;
 	};
 
 	chosen {
 		zephyr,flash = &flash;
 		zephyr,sram = &tcmu;
 		zephyr,console = &uart5;
+		zephyr,shell-uart = &uart5;
 	};
 
 	leds {
 		compatible = "gpio-leds";
-		red_led: led@0 {
-			gpios = <&gpio4 6 GPIO_INT_ACTIVE_LOW>;
+		red_led: led_0 {
+			gpios = <&gpio4 6 0>;
 			label = "User LD1";
 		};
 	};
@@ -68,5 +70,9 @@
 };
 
 &gpio6 {
+	status = "ok";
+};
+
+&mub {
 	status = "ok";
 };

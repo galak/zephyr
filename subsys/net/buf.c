@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define LOG_MODULE_NAME net_buf
+#define LOG_LEVEL CONFIG_NET_BUF_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
 #include <stdio.h>
 #include <errno.h>
 #include <stddef.h>
@@ -15,15 +21,11 @@
 #include <net/buf.h>
 
 #if defined(CONFIG_NET_BUF_LOG)
-#define SYS_LOG_DOMAIN "net/buf"
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_NET_BUF_LEVEL
-#include <logging/sys_log.h>
-
-#define NET_BUF_DBG(fmt, ...) SYS_LOG_DBG("(%p) " fmt, k_current_get(), \
-					  ##__VA_ARGS__)
-#define NET_BUF_ERR(fmt, ...) SYS_LOG_ERR(fmt, ##__VA_ARGS__)
-#define NET_BUF_WARN(fmt, ...) SYS_LOG_WRN(fmt,	##__VA_ARGS__)
-#define NET_BUF_INFO(fmt, ...) SYS_LOG_INF(fmt,  ##__VA_ARGS__)
+#define NET_BUF_DBG(fmt, ...) LOG_DBG("(%p) " fmt, k_current_get(), \
+				      ##__VA_ARGS__)
+#define NET_BUF_ERR(fmt, ...) LOG_ERR(fmt, ##__VA_ARGS__)
+#define NET_BUF_WARN(fmt, ...) LOG_WRN(fmt, ##__VA_ARGS__)
+#define NET_BUF_INFO(fmt, ...) LOG_INF(fmt, ##__VA_ARGS__)
 #define NET_BUF_ASSERT(cond) do { if (!(cond)) {			  \
 			NET_BUF_ERR("assert: '" #cond "' failed"); \
 		} } while (0)
@@ -111,7 +113,7 @@ static u8_t *mem_pool_data_alloc(struct net_buf *buf, size_t *size,
 	memcpy(block.data, &block.id, sizeof(block.id));
 
 	ref_count = (u8_t *)block.data + sizeof(block.id);
-	*ref_count = 1;
+	*ref_count = 1U;
 
 	/* Return pointer to the byte following the ref count */
 	return ref_count + 1;
@@ -169,7 +171,7 @@ static u8_t *heap_data_alloc(struct net_buf *buf, size_t *size, s32_t timeout)
 		return NULL;
 	}
 
-	*ref_count = 1;
+	*ref_count = 1U;
 
 	return ref_count + 1;
 }
@@ -273,7 +275,7 @@ struct net_buf *net_buf_alloc_len(struct net_buf_pool *pool, size_t size,
 
 	irq_unlock(key);
 
-#if defined(CONFIG_NET_BUF_LOG) && SYS_LOG_LEVEL >= SYS_LOG_LEVEL_WARNING
+#if defined(CONFIG_NET_BUF_LOG) && (CONFIG_NET_BUF_LOG_LEVEL >= LOG_LEVEL_WRN)
 	if (timeout == K_FOREVER) {
 		u32_t ref = k_uptime_get_32();
 		buf = k_lifo_get(&pool->free, K_NO_WAIT);
@@ -672,21 +674,16 @@ struct net_buf *net_buf_frag_del(struct net_buf *parent, struct net_buf *frag)
 	return next_frag;
 }
 
-int net_buf_linearize(void *dst, size_t dst_len, struct net_buf *src,
-		      size_t offset, size_t len)
+size_t net_buf_linearize(void *dst, size_t dst_len, struct net_buf *src,
+			 size_t offset, size_t len)
 {
 	struct net_buf *frag;
 	size_t to_copy;
 	size_t copied;
 
-	if (dst_len < (size_t)len) {
-		return -ENOMEM;
-	}
+	len = min(len, dst_len);
 
 	frag = src;
-
-	/* clear dst */
-	(void)memset(dst, 0, dst_len);
 
 	/* find the right fragment to start copying from */
 	while (frag && offset >= frag->len) {
@@ -698,7 +695,7 @@ int net_buf_linearize(void *dst, size_t dst_len, struct net_buf *src,
 	copied = 0;
 	while (frag && len > 0) {
 		to_copy = min(len, frag->len - offset);
-		memcpy(dst + copied, frag->data + offset, to_copy);
+		memcpy((u8_t *)dst + copied, frag->data + offset, to_copy);
 
 		copied += to_copy;
 
@@ -708,10 +705,6 @@ int net_buf_linearize(void *dst, size_t dst_len, struct net_buf *src,
 
 		/* after the first iteration, this value will be 0 */
 		offset = 0;
-	}
-
-	if (len > 0) {
-		return -ENOMEM;
 	}
 
 	return copied;
@@ -727,15 +720,15 @@ size_t net_buf_append_bytes(struct net_buf *buf, size_t len,
 {
 	struct net_buf *frag = net_buf_frag_last(buf);
 	size_t added_len = 0;
+	const u8_t *value8 = value;
 
 	do {
 		u16_t count = min(len, net_buf_tailroom(frag));
-		void *data = net_buf_add(frag, count);
 
-		memcpy(data, value, count);
+		net_buf_add_mem(frag, value8, count);
 		len -= count;
 		added_len += count;
-		value += count;
+		value8 += count;
 
 		if (len == 0) {
 			return added_len;

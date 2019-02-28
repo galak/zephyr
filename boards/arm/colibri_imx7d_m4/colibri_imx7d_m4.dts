@@ -20,6 +20,7 @@
 		sw0    = &user_switch_1;
 		i2c-4  = &i2c4;
 		pwm-1  = &pwm1;
+		mu-b   = &mub;
 	};
 
 	chosen {
@@ -28,11 +29,12 @@
 #endif
 		zephyr,sram = &tcmu_sys;
 		zephyr,console = &uart2;
+		zephyr,shell-uart = &uart2;
 	};
 
 	leds {
 		compatible = "gpio-leds";
-		green_led: led@0 {
+		green_led: led_0 {
 			gpios = <&gpio1 2 GPIO_INT_ACTIVE_LOW>;
 			label = "User LED1";
 		};
@@ -66,5 +68,9 @@
 };
 
 &pwm1 {
+	status = "ok";
+};
+
+&mub {
 	status = "ok";
 };

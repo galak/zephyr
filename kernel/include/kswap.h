@@ -9,12 +9,6 @@
 #include <ksched.h>
 #include <kernel_arch_func.h>
 
-#ifdef CONFIG_TIMESLICING
-extern void _update_time_slice_before_swap(void);
-#else
-#define _update_time_slice_before_swap() /**/
-#endif
-
 #ifdef CONFIG_STACK_SENTINEL
 extern void _check_stack_sentinel(void);
 #else
@@ -43,7 +37,6 @@ void _smp_release_global_lock(struct k_thread *thread);
 static inline int _Swap(unsigned int key)
 {
 	struct k_thread *new_thread, *old_thread;
-	int ret = 0;
 
 #ifdef CONFIG_EXECUTION_BENCHMARKING
 	extern void read_timer_start_of_swap(void);
@@ -53,7 +46,6 @@ static inline int _Swap(unsigned int key)
 	old_thread = _current;
 
 	_check_stack_sentinel();
-	_update_time_slice_before_swap();
 
 #ifdef CONFIG_TRACING
 	sys_trace_thread_switched_out();
@@ -75,8 +67,6 @@ static inline int _Swap(unsigned int key)
 		_current = new_thread;
 		_arch_switch(new_thread->switch_handle,
 			     &old_thread->switch_handle);
-
-		ret = _current->swap_retval;
 	}
 
 #ifdef CONFIG_TRACING
@@ -85,7 +75,7 @@ static inline int _Swap(unsigned int key)
 
 	irq_unlock(key);
 
-	return ret;
+	return _current->swap_retval;
 }
 
 #else /* !CONFIG_USE_SWITCH */
@@ -96,14 +86,17 @@ static inline int _Swap(unsigned int key)
 {
 	int ret;
 	_check_stack_sentinel();
-	_update_time_slice_before_swap();
 
+#ifndef CONFIG_ARM
 #ifdef CONFIG_TRACING
 	sys_trace_thread_switched_out();
 #endif
+#endif
 	ret = __swap(key);
+#ifndef CONFIG_ARM
 #ifdef CONFIG_TRACING
 	sys_trace_thread_switched_in();
+#endif
 #endif
 
 	return ret;

@@ -9,7 +9,7 @@
  */
 
 /dts-v1/;
-#include <st/stm32l476.dtsi>
+#include <st/l4/stm32l476Xg.dtsi>
 
 / {
 	model = "STMicroelectronics STM32L476G-DISCO board";
@@ -17,17 +17,18 @@
 
 	chosen {
 		zephyr,console = &usart2;
+		zephyr,shell-uart = &usart2;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 	};
 
 	leds {
 		compatible = "gpio-leds";
-		green_led_4: led@0 {
+		green_led_4: led_4 {
 			gpios = <&gpiob 2 GPIO_INT_ACTIVE_HIGH>;
 			label = "User LD4";
 		};
-		green_led_5: led@1 {
+		green_led_5: led_5 {
 			gpios = <&gpioe 8 GPIO_INT_ACTIVE_HIGH>;
 			label = "User LD5";
 		};

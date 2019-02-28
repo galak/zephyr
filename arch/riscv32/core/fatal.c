@@ -8,6 +8,7 @@
 #include <kernel_structs.h>
 #include <inttypes.h>
 #include <misc/printk.h>
+#include <logging/log_ctrl.h>
 
 const NANO_ESF _default_esf = {
 	0xdeadbaad,
@@ -30,13 +31,10 @@ const NANO_ESF _default_esf = {
 	0xdeadbaad,
 	0xdeadbaad,
 	0xdeadbaad,
-#if defined(CONFIG_SOC_RISCV32_PULPINO)
-	0xdeadbaad,
-	0xdeadbaad,
-	0xdeadbaad,
-	0xdeadbaad,
-	0xdeadbaad,
-	0xdeadbaad,
+#if defined(CONFIG_RISCV_SOC_CONTEXT_SAVE)
+	{
+		SOC_ESF_INIT,
+	},
 #endif
 };
 
@@ -60,6 +58,8 @@ const NANO_ESF _default_esf = {
 FUNC_NORETURN void _NanoFatalErrorHandler(unsigned int reason,
 					  const NANO_ESF *esf)
 {
+	LOG_PANIC();
+
 	switch (reason) {
 	case _NANO_ERR_CPU_EXCEPTION:
 	case _NANO_ERR_SPURIOUS_INT:
@@ -135,6 +135,8 @@ FUNC_NORETURN __weak void _SysFatalErrorHandler(unsigned int reason,
 {
 	ARG_UNUSED(esf);
 
+	LOG_PANIC();
+
 #if !defined(CONFIG_SIMPLE_FATAL_ERROR_HANDLER)
 #ifdef CONFIG_STACK_SENTINEL
 	if (reason == _NANO_ERR_STACK_CHK_FAIL) {
@@ -194,8 +196,9 @@ FUNC_NORETURN void _Fault(const NANO_ESF *esf)
 	__asm__ volatile("csrr %0, mcause" : "=r" (mcause));
 
 	mcause &= SOC_MCAUSE_EXP_MASK;
-
+#ifdef CONFIG_PRINTK
 	printk("Exception cause %s (%d)\n", cause_str(mcause), (int)mcause);
+#endif
 
 	_NanoFatalErrorHandler(_NANO_ERR_CPU_EXCEPTION, esf);
 }

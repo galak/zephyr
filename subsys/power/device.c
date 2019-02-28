@@ -9,7 +9,7 @@
 #include <string.h>
 #include <soc.h>
 #include <device.h>
-#include "pm_policy.h"
+#include "policy/pm_policy.h"
 
 #define LOG_LEVEL CONFIG_PM_LOG_LEVEL /* From power module Kconfig */
 #include <logging/log.h>
@@ -57,6 +57,23 @@ int sys_pm_suspend_devices(void)
 		if (device_retval[i]) {
 			LOG_ERR("%s suspend operation failed\n",
 					pm_device_list[idx].config->name);
+			return device_retval[i];
+		}
+	}
+
+	return 0;
+}
+
+int sys_pm_force_suspend_devices(void)
+{
+	for (int i = device_count - 1; i >= 0; i--) {
+		int idx = device_ordered_list[i];
+
+		device_retval[i] = device_set_power_state(&pm_device_list[idx],
+						DEVICE_PM_FORCE_SUSPEND_STATE);
+		if (device_retval[i]) {
+			LOG_ERR("%s force suspend operation failed\n",
+				pm_device_list[idx].config->name);
 			return device_retval[i];
 		}
 	}

@@ -16,7 +16,12 @@
 #include <syscall_handler.h>
 #include <device.h>
 #include <init.h>
-#include <logging/sys_log.h>
+#include <stdbool.h>
+
+#define LOG_LEVEL CONFIG_KERNEL_LOG_LEVEL
+#include <logging/log.h>
+LOG_MODULE_DECLARE(kernel);
+
 #if defined(CONFIG_NETWORKING) && defined (CONFIG_DYNAMIC_OBJECTS)
 /* Used by auto-generated obj_size_get() switch body, as we need to
  * know the size of struct net_context
@@ -74,7 +79,7 @@ extern struct _k_object *_k_object_gperf_find(void *obj);
 extern void _k_object_gperf_wordlist_foreach(_wordlist_cb_func_t func,
 					     void *context);
 
-static int node_lessthan(struct rbnode *a, struct rbnode *b);
+static bool node_lessthan(struct rbnode *a, struct rbnode *b);
 
 /*
  * Red/black tree of allocated kernel objects, for reasonably fast lookups
@@ -109,7 +114,7 @@ static size_t obj_size_get(enum k_objects otype)
 	return ret;
 }
 
-static int node_lessthan(struct rbnode *a, struct rbnode *b)
+static bool node_lessthan(struct rbnode *a, struct rbnode *b)
 {
 	return a < b;
 }
@@ -157,9 +162,9 @@ static struct dyn_obj *dyn_object_find(void *obj)
  *
  * @param tidx The new thread index if successful
  *
- * @return 1 if successful, 0 if failed
+ * @return true if successful, false if failed
  **/
-static int _thread_idx_alloc(u32_t *tidx)
+static bool _thread_idx_alloc(u32_t *tidx)
 {
 	int i;
 	int idx;
@@ -169,7 +174,7 @@ static int _thread_idx_alloc(u32_t *tidx)
 	for (i = 0; i < CONFIG_MAX_THREAD_BYTES; i++) {
 		idx = find_lsb_set(_thread_idx_map[i]);
 
-		if (idx) {
+		if (idx != 0) {
 			*tidx = base + (idx - 1);
 
 			sys_bitfield_clear_bit((mem_addr_t)_thread_idx_map,
@@ -179,13 +184,13 @@ static int _thread_idx_alloc(u32_t *tidx)
 			_k_object_wordlist_foreach(clear_perms_cb,
 						   (void *)*tidx);
 
-			return 1;
+			return true;
 		}
 
 		base += 8;
 	}
 
-	return 0;
+	return false;
 }
 
 /**
@@ -221,7 +226,7 @@ void *_impl_k_object_alloc(enum k_objects otype)
 
 	dyn_obj = z_thread_malloc(sizeof(*dyn_obj) + obj_size_get(otype));
 	if (dyn_obj == NULL) {
-		SYS_LOG_WRN("could not allocate kernel object");
+		LOG_WRN("could not allocate kernel object");
 		return NULL;
 	}
 
@@ -287,11 +292,11 @@ struct _k_object *_k_object_find(void *obj)
 	ret = _k_object_gperf_find(obj);
 
 	if (ret == NULL) {
-		struct dyn_obj *dyn_obj;
+		struct dyn_obj *dynamic_obj;
 
-		dyn_obj = dyn_object_find(obj);
-		if (dyn_obj != NULL) {
-			ret = &dyn_obj->kobj;
+		dynamic_obj = dyn_object_find(obj);
+		if (dynamic_obj != NULL) {
+			ret = &dynamic_obj->kobj;
 		}
 	}
 
@@ -329,7 +334,7 @@ static int thread_index_get(struct k_thread *t)
 static void unref_check(struct _k_object *ko)
 {
 	for (int i = 0; i < CONFIG_MAX_THREAD_BYTES; i++) {
-		if (ko->perms[i]) {
+		if (ko->perms[i] != 0) {
 			return;
 		}
 	}
@@ -355,7 +360,7 @@ static void unref_check(struct _k_object *ko)
 	}
 
 #ifdef CONFIG_DYNAMIC_OBJECTS
-	if (ko->flags & K_OBJ_FLAG_ALLOC) {
+	if ((ko->flags & K_OBJ_FLAG_ALLOC) != 0) {
 		struct dyn_obj *dyn_obj =
 			CONTAINER_OF(ko, struct dyn_obj, kobj);
 		rb_remove(&obj_rb_tree, &dyn_obj->node);
@@ -433,7 +438,7 @@ static int thread_perms_test(struct _k_object *ko)
 {
 	int index;
 
-	if (ko->flags & K_OBJ_FLAG_PUBLIC) {
+	if ((ko->flags & K_OBJ_FLAG_PUBLIC) != 0) {
 		return 1;
 	}
 
@@ -513,7 +518,8 @@ void k_object_access_all_grant(void *object)
 int _k_object_validate(struct _k_object *ko, enum k_objects otype,
 		       enum _obj_init_check init)
 {
-	if (unlikely(!ko || (otype != K_OBJ_ANY && ko->type != otype))) {
+	if (unlikely((ko == NULL) ||
+		(otype != K_OBJ_ANY && ko->type != otype))) {
 		return -EBADF;
 	}
 
@@ -535,12 +541,14 @@ int _k_object_validate(struct _k_object *ko, enum k_objects otype,
 		if (unlikely(ko->flags & K_OBJ_FLAG_INITIALIZED)) {
 			return -EADDRINUSE;
 		}
+	} else {
+		/* _OBJ_INIT_ANY */
 	}
 
 	return 0;
 }
 
-void _k_object_init(void *object)
+void _k_object_init(void *obj)
 {
 	struct _k_object *ko;
 
@@ -552,7 +560,7 @@ void _k_object_init(void *object)
 	 * finalizes it
 	 */
 
-	ko = _k_object_find(object);
+	ko = _k_object_find(obj);
 	if (ko == NULL) {
 		/* Supervisor threads can ignore rules about kernel objects
 		 * and may declare them on stacks, etc. Such objects will never
@@ -565,9 +573,9 @@ void _k_object_init(void *object)
 	ko->flags |= K_OBJ_FLAG_INITIALIZED;
 }
 
-void _k_object_recycle(void *object)
+void _k_object_recycle(void *obj)
 {
-	struct _k_object *ko = _k_object_find(object);
+	struct _k_object *ko = _k_object_find(obj);
 
 	if (ko != NULL) {
 		(void)memset(ko->perms, 0, sizeof(ko->perms));
@@ -576,12 +584,12 @@ void _k_object_recycle(void *object)
 	}
 }
 
-void _k_object_uninit(void *object)
+void _k_object_uninit(void *obj)
 {
 	struct _k_object *ko;
 
 	/* See comments in _k_object_init() */
-	ko = _k_object_find(object);
+	ko = _k_object_find(obj);
 	if (ko == NULL) {
 		return;
 	}
@@ -655,7 +663,7 @@ char *z_user_string_alloc_copy(char *src, size_t maxlen)
 
 	key = irq_lock();
 	actual_len = z_user_string_nlen(src, maxlen, &err);
-	if (err) {
+	if (err != 0) {
 		goto out;
 	}
 	if (actual_len == maxlen) {
@@ -682,7 +690,7 @@ int z_user_string_copy(char *dst, char *src, size_t maxlen)
 
 	key = irq_lock();
 	actual_len = z_user_string_nlen(src, maxlen, &err);
-	if (err) {
+	if (err != 0) {
 		ret = EFAULT;
 		goto out;
 	}

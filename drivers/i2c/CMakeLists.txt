@@ -1,6 +1,5 @@
 zephyr_library()
 
-zephyr_library_sources_ifdef(CONFIG_I2C_ATMEL_SAM3	i2c_atmel_sam3.c)
 zephyr_library_sources_ifdef(CONFIG_I2C_BITBANG		i2c_bitbang.c)
 zephyr_library_sources_ifdef(CONFIG_I2C_CC32XX		i2c_cc32xx.c)
 zephyr_library_sources_ifdef(CONFIG_I2C_DW		i2c_dw.c)
@@ -16,6 +15,7 @@ zephyr_library_sources_ifdef(CONFIG_I2C_SAM_TWI		i2c_sam_twi.c)
 zephyr_library_sources_ifdef(CONFIG_I2C_SAM_TWIHS	i2c_sam_twihs.c)
 zephyr_library_sources_ifdef(CONFIG_I2C_SBCON		i2c_sbcon.c)
 zephyr_library_sources_ifdef(CONFIG_I2C_NIOS2		i2c_nios2.c)
+zephyr_library_sources_ifdef(CONFIG_I2C_GECKO		i2c_gecko.c)
 
 zephyr_library_sources_ifdef(CONFIG_I2C_STM32_V1
 	i2c_ll_stm32_v1.c

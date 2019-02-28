@@ -13,6 +13,11 @@
 
 #include <ztest.h>
 
+#define NET_LOG_LEVEL CONFIG_WEBSOCKET_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_test, NET_LOG_LEVEL);
+
 #include <net/net_ip.h>
 #include <net/net_app.h>
 #include <net/websocket.h>
@@ -20,7 +25,7 @@
 static struct net_app_ctx app_ctx_v6;
 static struct net_app_ctx app_ctx_v4;
 
-#if defined(CONFIG_NET_DEBUG_WEBSOCKET)
+#if NET_LOG_LEVEL >= LOG_LEVEL_DBG
 #define DBG(fmt, ...) printk(fmt, ##__VA_ARGS__)
 #define NET_LOG_ENABLED 1
 #else
@@ -217,7 +222,7 @@ static void test_send_recv(int chunk_size, struct net_app_ctx *ctx)
 
 	for (i = 0; i < sizeof(ws_test_msg); i += chunk_size) {
 		for (j = 0;
-		     IS_ENABLED(CONFIG_NET_DEBUG_WEBSOCKET) && j < chunk_size;
+		     (NET_LOG_LEVEL >= LOG_LEVEL_DBG) && j < chunk_size;
 		     j++) {
 			if ((i + chunk_size) >= sizeof(ws_test_msg)) {
 				break;
@@ -276,7 +281,7 @@ static void test_send_multi_msg(struct net_app_ctx *ctx)
 
 	for (i = 0; i < sizeof(ws_big_msg); i += chunk_size) {
 		for (j = 0;
-		     IS_ENABLED(CONFIG_NET_DEBUG_WEBSOCKET) && j < chunk_size;
+		     (NET_LOG_LEVEL >= LOG_LEVEL_DBG) && j < chunk_size;
 		     j++) {
 			int first_msg = 0;
 

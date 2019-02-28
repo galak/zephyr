@@ -10,13 +10,13 @@
 #include <kernel.h>
 #include <string.h>
 #include <stdlib.h>
-#include <board.h>
+#include <soc.h>
 #include <adc.h>
 #include <arch/cpu.h>
 
-#define SYS_LOG_DOMAIN "dev/adc_quark_d2000"
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_ADC_LEVEL
-#include <logging/sys_log.h>
+#define LOG_LEVEL CONFIG_ADC_LOG_LEVEL
+#include <logging/log.h>
+LOG_MODULE_REGISTER(adc_intel_quark_d2000);
 
 #define ADC_CONTEXT_USES_KERNEL_TIMER
 #include "adc_context.h"
@@ -201,27 +201,27 @@ static int adc_quark_d2000_channel_setup(struct device *dev,
 	u8_t channel_id = channel_cfg->channel_id;
 
 	if (channel_id > MAX_CHANNELS) {
-		SYS_LOG_ERR("Channel %d is not valid", channel_id);
+		LOG_ERR("Channel %d is not valid", channel_id);
 		return -EINVAL;
 	}
 
 	if (channel_cfg->acquisition_time != ADC_ACQ_TIME_DEFAULT) {
-		SYS_LOG_ERR("Invalid channel acquisition time");
+		LOG_ERR("Invalid channel acquisition time");
 		return -EINVAL;
 	}
 
 	if (channel_cfg->differential) {
-		SYS_LOG_ERR("Differential channels are not supported");
+		LOG_ERR("Differential channels are not supported");
 		return -EINVAL;
 	}
 
 	if (channel_cfg->gain != ADC_GAIN_1) {
-		SYS_LOG_ERR("Invalid channel gain");
+		LOG_ERR("Invalid channel gain");
 		return -EINVAL;
 	}
 
 	if (channel_cfg->reference != ADC_REF_INTERNAL) {
-		SYS_LOG_ERR("Invalid channel reference");
+		LOG_ERR("Invalid channel reference");
 		return -EINVAL;
 	}
 
@@ -267,7 +267,7 @@ static int adc_quark_d2000_read_request(struct device *dev,
 	if (seq_tbl->options) {
 		info->seq_size = seq_tbl->options->extra_samplings + 1;
 	} else {
-		info->seq_size = 1;
+		info->seq_size = 1U;
 	}
 
 	if (info->seq_size > ADC_FIFO_LEN) {
@@ -276,7 +276,7 @@ static int adc_quark_d2000_read_request(struct device *dev,
 
 	/* check if buffer has enough size */
 	utmp = info->channels;
-	num_channels = 0;
+	num_channels = 0U;
 	while (utmp) {
 		if (utmp & BIT(0)) {
 			num_channels++;
@@ -289,20 +289,22 @@ static int adc_quark_d2000_read_request(struct device *dev,
 	}
 
 	adc_context_start_read(&info->ctx, seq_tbl);
-	error = adc_context_wait_for_completion(&info->ctx);
-	adc_context_release(&info->ctx, error);
 
-	return 0;
+	error = adc_context_wait_for_completion(&info->ctx);
+	return error;
 }
 
 static int adc_quark_d2000_read(struct device *dev,
 			   const struct adc_sequence *sequence)
 {
 	struct adc_quark_d2000_info *info = dev->driver_data;
+	int error;
 
 	adc_context_lock(&info->ctx, false, NULL);
+	error = adc_quark_d2000_read_request(dev, sequence);
+	adc_context_release(&info->ctx, error);
 
-	return adc_quark_d2000_read_request(dev, sequence);
+	return error;
 }
 
 #ifdef CONFIG_ADC_ASYNC
@@ -311,10 +313,13 @@ static int adc_quark_d2000_read_async(struct device *dev,
 				      struct k_poll_signal *async)
 {
 	struct adc_quark_d2000_info *info = dev->driver_data;
+	int error;
 
 	adc_context_lock(&info->ctx, true, async);
+	error = adc_quark_d2000_read_request(dev, sequence);
+	adc_context_release(&info->ctx, error);
 
-	return adc_quark_d2000_read_request(dev, sequence);
+	return error;
 }
 #endif
 
@@ -325,8 +330,8 @@ static void adc_quark_d2000_start_conversion(struct device *dev)
 		info->dev->config->config_info;
 	const struct adc_sequence *entry = info->ctx.sequence;
 	volatile adc_reg_t *adc_regs = config->reg_base;
-	u32_t i, val, interval_us = 0;
-	u32_t idx = 0, offset = 0;
+	u32_t i, val, interval_us = 0U;
+	u32_t idx = 0U, offset = 0U;
 
 	info->channel_id = find_lsb_set(info->channels) - 1;
 
@@ -338,7 +343,7 @@ static void adc_quark_d2000_start_conversion(struct device *dev)
 	adc_regs->sample = ADC_FIFO_CLEAR;
 
 	/* setup the sequence table */
-	for (i = 0; i < info->seq_size; i++) {
+	for (i = 0U; i < info->seq_size; i++) {
 		idx = i / 4;
 		offset = (i % 4) * 8;
 
@@ -481,11 +486,11 @@ static const struct adc_driver_api adc_quark_d2000_driver_api = {
 static void adc_quark_d2000_config_func_0(struct device *dev);
 
 static const struct adc_quark_d2000_config adc_quark_d2000_config_0 = {
-	.reg_base = (adc_reg_t *)CONFIG_ADC_0_BASE_ADDRESS,
+	.reg_base = (adc_reg_t *)DT_ADC_0_BASE_ADDRESS,
 	.config_func = adc_quark_d2000_config_func_0,
 };
 
-DEVICE_AND_API_INIT(adc_quark_d2000_0, CONFIG_ADC_0_NAME,
+DEVICE_AND_API_INIT(adc_quark_d2000_0, DT_ADC_0_NAME,
 		    &adc_quark_d2000_init, &adc_quark_d2000_data_0,
 		    &adc_quark_d2000_config_0, POST_KERNEL,
 		    CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
@@ -493,11 +498,11 @@ DEVICE_AND_API_INIT(adc_quark_d2000_0, CONFIG_ADC_0_NAME,
 
 static void adc_quark_d2000_config_func_0(struct device *dev)
 {
-	IRQ_CONNECT(CONFIG_ADC_0_IRQ, CONFIG_ADC_0_IRQ_PRI,
+	IRQ_CONNECT(DT_ADC_0_IRQ, 0,
 		    adc_quark_d2000_isr,
 		    DEVICE_GET(adc_quark_d2000_0),
-		    CONFIG_ADC_0_IRQ_FLAGS);
+		    DT_ADC_0_IRQ_FLAGS);
 
-	irq_enable(CONFIG_ADC_0_IRQ);
+	irq_enable(DT_ADC_0_IRQ);
 }
 #endif /* CONFIG_ADC_0 */

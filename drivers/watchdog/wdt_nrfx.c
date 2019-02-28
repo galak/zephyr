@@ -7,9 +7,9 @@
 #include <nrfx_wdt.h>
 #include <watchdog.h>
 
-#define SYS_LOG_DOMAIN "wdt_nrfx"
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_WDT_LEVEL
-#include <logging/sys_log.h>
+#define LOG_LEVEL CONFIG_WDT_LOG_LEVEL
+#include <logging/log.h>
+LOG_MODULE_REGISTER(wdt_nrfx);
 
 DEVICE_DECLARE(wdt_nrfx);
 
@@ -130,7 +130,7 @@ static void wdt_nrf_enable(struct device *dev)
 {
 	ARG_UNUSED(dev);
 	/* Deprecated function. No implementation needed. */
-	SYS_LOG_ERR("Function not implemented!");
+	LOG_ERR("Function not implemented!");
 }
 
 static int wdt_nrf_set_config(struct device *dev, struct wdt_config *config)
@@ -138,7 +138,7 @@ static int wdt_nrf_set_config(struct device *dev, struct wdt_config *config)
 	ARG_UNUSED(dev);
 	ARG_UNUSED(config);
 	/* Deprecated function. No implementation needed. */
-	SYS_LOG_ERR("Function not implemented!");
+	LOG_ERR("Function not implemented!");
 	return 0;
 }
 
@@ -147,14 +147,14 @@ static void wdt_nrf_get_config(struct device *dev, struct wdt_config *config)
 	ARG_UNUSED(dev);
 	ARG_UNUSED(config);
 	/* Deprecated function. No implementation needed. */
-	SYS_LOG_ERR("Function not implemented!");
+	LOG_ERR("Function not implemented!");
 }
 
 static void wdt_nrf_reload(struct device *dev)
 {
 	ARG_UNUSED(dev);
 	/* Deprecated function. No implementation needed. */
-	SYS_LOG_ERR("Function not implemented!");
+	LOG_ERR("Function not implemented!");
 }
 
 static const struct wdt_driver_api wdt_nrf_api = {
@@ -197,13 +197,14 @@ static int init_wdt(struct device *dev)
 		return -EBUSY;
 	}
 
-	IRQ_CONNECT(CONFIG_WDT_NRF_IRQ, CONFIG_WDT_NRF_IRQ_PRI,
+	IRQ_CONNECT(DT_NORDIC_NRF_WATCHDOG_WDT_0_IRQ,
+		    DT_NORDIC_NRF_WATCHDOG_WDT_0_IRQ_PRIORITY,
 		    nrfx_isr, nrfx_wdt_irq_handler, 0);
-	irq_enable(CONFIG_WDT_NRF_IRQ);
+	irq_enable(DT_NORDIC_NRF_WATCHDOG_WDT_0_IRQ);
 
 	return 0;
 }
 
-DEVICE_AND_API_INIT(wdt_nrf, CONFIG_WDT_0_NAME, init_wdt,
+DEVICE_AND_API_INIT(wdt_nrf, DT_NORDIC_NRF_WATCHDOG_WDT_0_LABEL, init_wdt,
 		    NULL, NULL, PRE_KERNEL_1,
 		    CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &wdt_nrf_api);

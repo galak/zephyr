@@ -51,6 +51,10 @@ can be disabled if not needed.
   compatible API is implemented. Both blocking and non-blocking DGRAM (UDP)
   and STREAM (TCP) sockets are supported.
 
+* **Secure Sockets API** Experimental support for TLS/DTLS secure protocols and
+  configuration options for sockets API. Secure functions for the implementation
+  are provided by mbedTLS library.
+
 * **HTTP** Hypertext Transfer Protocol (RFC 2116) is supported. A simple
   library is provided that applications can use. Sample applications are
   implemented for :ref:`http-client-sample` and :ref:`http-server-sample`.
@@ -67,14 +71,16 @@ can be disabled if not needed.
   Both :ref:`coap-client-sample` and :ref:`coap-server-sample` sample
   applications are implemented.
 
+* **CoAP over Sockets** Constrained Application Protocol (RFC 7252) is supported
+  over socket based applications or higher layer protocols.
+  Both :ref:`coap-client-sock-sample` and :ref:`coap-server-sock-sample`
+  sample applications are implemented.
+
 * **LWM2M** OMA Lightweight Machine-to-Machine Protocol (V1.0 Feb 2017) is
   supported via the "Register Device" API (Register, De-Register and Update)
   and has template implementations for Security, Server, Device Management and
   Firmware objects.   DTLS and Bootstrap support are currently not supported.
   :ref:`lwm2m-client-sample` implements the library as an example.
-
-* **RPL** IPv6 Routing Protocol for Low-Power and Lossy Networks (RFC 6550)
-  is supported. RPL is an IPv6 based mesh routing protocol.
 
 * **DNS** Domain Name Service (RFC 1035) client functionality is supported.
   Applications can use an API to query domain name information or IP addresses

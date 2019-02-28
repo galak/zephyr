@@ -3,13 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
-#define SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
-#include <logging/sys_log.h>
-
 #include <zephyr.h>
 #include <soc_power.h>
 #include <nrf_power.h>
+
+#define LOG_LEVEL CONFIG_SOC_LOG_LEVEL
+#include <logging/log.h>
+LOG_MODULE_DECLARE(soc);
 
 #if defined(CONFIG_SYS_POWER_DEEP_SLEEP)
 /* System_OFF is deepest Power state available, On exiting from this
@@ -48,7 +48,7 @@ static void _low_power_mode(enum power_states state)
 
 	default:
 		/* Unsupported State */
-		SYS_LOG_ERR("Unsupported State\n");
+		LOG_ERR("Unsupported State");
 		break;
 	}
 
@@ -57,7 +57,7 @@ static void _low_power_mode(enum power_states state)
 }
 
 /* Invoke Low Power/System Off specific Tasks */
-void _sys_soc_set_power_state(enum power_states state)
+void sys_set_power_state(enum power_states state)
 {
 	switch (state) {
 	case SYS_POWER_STATE_CPU_LPS:
@@ -73,13 +73,13 @@ void _sys_soc_set_power_state(enum power_states state)
 #endif
 	default:
 		/* Unsupported State */
-		SYS_LOG_ERR("Unsupported State\n");
+		LOG_ERR("Unsupported State");
 		break;
 	}
 }
 
 /* Handle SOC specific activity after Low Power Mode Exit */
-void _sys_soc_power_state_post_ops(enum power_states state)
+void sys_power_state_post_ops(enum power_states state)
 {
 	switch (state) {
 	case SYS_POWER_STATE_CPU_LPS:
@@ -93,12 +93,12 @@ void _sys_soc_power_state_post_ops(enum power_states state)
 #endif
 	default:
 		/* Unsupported State */
-		SYS_LOG_ERR("Unsupported State\n");
+		LOG_ERR("Unsupported State");
 		break;
 	}
 }
 
-bool _sys_soc_is_valid_power_state(enum power_states state)
+bool sys_is_valid_power_state(enum power_states state)
 {
 	switch (state) {
 	case SYS_POWER_STATE_CPU_LPS:
@@ -109,9 +109,17 @@ bool _sys_soc_is_valid_power_state(enum power_states state)
 		return true;
 		break;
 	default:
-		SYS_LOG_DBG("Unsupported State\n");
+		LOG_DBG("Unsupported State");
 		break;
 	}
 
 	return false;
+}
+
+/* Overrides the weak ARM implementation:
+   Set general purpose retention register and reboot */
+void sys_arch_reboot(int type)
+{
+	nrf_power_gpregret_set((uint8_t)type);
+	NVIC_SystemReset();
 }

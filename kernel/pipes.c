@@ -20,6 +20,7 @@
 #include <init.h>
 #include <syscall_handler.h>
 #include <misc/__assert.h>
+#include <kernel_internal.h>
 
 struct k_pipe_desc {
 	unsigned char *buffer;           /* Position in src/dest buffer */
@@ -44,9 +45,6 @@ struct k_pipe *_trace_list_k_pipe;
 #endif	/* CONFIG_OBJECT_TRACING */
 
 #if (CONFIG_NUM_PIPE_ASYNC_MSGS > 0)
-
-/* Array of asynchronous message descriptors */
-static struct k_pipe_async __noinit async_msg[CONFIG_NUM_PIPE_ASYNC_MSGS];
 
 /* stack of unused asynchronous message descriptors */
 K_STACK_DEFINE(pipe_async_msgs, CONFIG_NUM_PIPE_ASYNC_MSGS);
@@ -90,6 +88,9 @@ static void pipe_async_finish(struct k_pipe_async *async_desc)
 static int init_pipes_module(struct device *dev)
 {
 	ARG_UNUSED(dev);
+
+	/* Array of asynchronous message descriptors */
+	static struct k_pipe_async __noinit async_msg[CONFIG_NUM_PIPE_ASYNC_MSGS];
 
 #if (CONFIG_NUM_PIPE_ASYNC_MSGS > 0)
 	/*
@@ -150,9 +151,9 @@ int _impl_k_pipe_alloc_init(struct k_pipe *pipe, size_t size)
 	void *buffer;
 	int ret;
 
-	if (size) {
+	if (size != 0) {
 		buffer = z_thread_malloc(size);
-		if (buffer) {
+		if (buffer != NULL) {
 			k_pipe_init(pipe, buffer, size);
 			pipe->flags = K_PIPE_FLAG_ALLOC;
 			ret = 0;
@@ -181,7 +182,7 @@ void k_pipe_cleanup(struct k_pipe *pipe)
 	__ASSERT_NO_MSG(!_waitq_head(&pipe->wait_q.readers));
 	__ASSERT_NO_MSG(!_waitq_head(&pipe->wait_q.writers));
 
-	if (pipe->flags & K_PIPE_FLAG_ALLOC) {
+	if ((pipe->flags & K_PIPE_FLAG_ALLOC) != 0) {
 		k_free(pipe->buffer);
 		pipe->buffer = NULL;
 		pipe->flags &= ~K_PIPE_FLAG_ALLOC;
@@ -347,7 +348,7 @@ static bool pipe_xfer_prepare(sys_dlist_t      *xfer_list,
 	sys_dlist_init(xfer_list);
 	num_bytes = 0;
 
-	while ((thread = _waitq_head(wait_q))) {
+	while ((thread = _waitq_head(wait_q)) != NULL) {
 		desc = (struct k_pipe_desc *)thread->base.swap_data;
 		num_bytes += desc->bytes_to_xfer;
 
@@ -415,7 +416,7 @@ static void pipe_thread_ready(struct k_thread *thread)
 	unsigned int  key;
 
 #if (CONFIG_NUM_PIPE_ASYNC_MSGS > 0)
-	if (thread->base.thread_state & _THREAD_DUMMY) {
+	if ((thread->base.thread_state & _THREAD_DUMMY) != 0) {
 		pipe_async_finish((struct k_pipe_async *)thread);
 		return;
 	}
@@ -627,7 +628,7 @@ int _impl_k_pipe_get(struct k_pipe *pipe, void *data, size_t bytes_to_read,
 				  sys_dlist_get(&xfer_list);
 	while ((thread != NULL) && (num_bytes_read < bytes_to_read)) {
 		desc = (struct k_pipe_desc *)thread->base.swap_data;
-		bytes_copied = pipe_xfer(data + num_bytes_read,
+		bytes_copied = pipe_xfer((u8_t *)data + num_bytes_read,
 					  bytes_to_read - num_bytes_read,
 					  desc->buffer, desc->bytes_to_xfer);
 
@@ -651,7 +652,7 @@ int _impl_k_pipe_get(struct k_pipe *pipe, void *data, size_t bytes_to_read,
 
 	if ((writer != NULL) && (num_bytes_read < bytes_to_read)) {
 		desc = (struct k_pipe_desc *)writer->base.swap_data;
-		bytes_copied = pipe_xfer(data + num_bytes_read,
+		bytes_copied = pipe_xfer((u8_t *)data + num_bytes_read,
 					  bytes_to_read - num_bytes_read,
 					  desc->buffer, desc->bytes_to_xfer);
 
@@ -700,7 +701,7 @@ int _impl_k_pipe_get(struct k_pipe *pipe, void *data, size_t bytes_to_read,
 
 	struct k_pipe_desc  pipe_desc;
 
-	pipe_desc.buffer        = data + num_bytes_read;
+	pipe_desc.buffer        = (u8_t *)data + num_bytes_read;
 	pipe_desc.bytes_to_xfer = bytes_to_read - num_bytes_read;
 
 	if (timeout != K_NO_WAIT) {

@@ -8,10 +8,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if defined(CONFIG_NET_DEBUG_UDP)
-#define SYS_LOG_DOMAIN "net/udp"
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_udp, CONFIG_NET_UDP_LOG_LEVEL);
 
 #include "net_private.h"
 #include "udp_internal.h"
@@ -98,13 +96,13 @@ fail:
 struct net_buf *net_udp_set_chksum(struct net_pkt *pkt, struct net_buf *frag)
 {
 	struct net_udp_hdr *hdr;
-	u16_t chksum = 0;
+	u16_t chksum = 0U;
 	u16_t pos;
 
 	hdr = net_pkt_udp_data(pkt);
 	if (net_udp_header_fits(pkt, hdr)) {
 		hdr->chksum = 0;
-		hdr->chksum = ~net_calc_chksum_udp(pkt);
+		hdr->chksum = net_calc_chksum_udp(pkt);
 
 		return frag;
 	}
@@ -117,7 +115,7 @@ struct net_buf *net_udp_set_chksum(struct net_pkt *pkt, struct net_buf *frag)
 			     &pos, sizeof(chksum), (u8_t *)&chksum,
 			     PKT_WAIT_TIME);
 
-	chksum = ~net_calc_chksum_udp(pkt);
+	chksum = net_calc_chksum_udp(pkt);
 
 	frag = net_pkt_write(pkt, frag, pos - 2, &pos, sizeof(chksum),
 			     (u8_t *)&chksum, PKT_WAIT_TIME);

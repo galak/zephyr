@@ -1,6 +1,5 @@
 ---
 title: Flash Partitions
-id: fixed-partition
 version: 0.1
 
 description: >
@@ -39,6 +38,5 @@ properties:
             generation: define
 
 base_label: FLASH_AREA
-use-property-label: yes
 
 ...

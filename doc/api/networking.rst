@@ -78,6 +78,18 @@ BSD Sockets compatible API
 .. doxygengroup:: bsd_sockets
    :project: Zephyr
 
+Network configuration library
+*****************************
+
+.. doxygengroup:: net_config
+   :project: Zephyr
+
+Network long timeout support
+****************************
+
+.. doxygengroup:: net_timeout
+   :project: Zephyr
+
 Network offloading support
 **************************
 
@@ -88,6 +100,18 @@ Network statistics
 ******************
 
 .. doxygengroup:: net_stats
+   :project: Zephyr
+
+Precision Time Protocol time
+****************************
+
+.. doxygengroup:: ptp_time
+   :project: Zephyr
+
+Promiscuous mode support
+************************
+
+.. doxygengroup:: promiscuous
    :project: Zephyr
 
 Trickle timer support
@@ -174,10 +198,10 @@ MQTT 3.1.1
 .. doxygengroup:: mqtt
    :project: Zephyr
 
-CoAP
-====
+CoAP over Sockets
+=================
 
-.. doxygengroup:: coap
+.. doxygengroup:: coap_sock
    :project: Zephyr
 
 DNS Resolve
@@ -202,4 +226,10 @@ Websocket console
 =================
 
 .. doxygengroup:: websocket_console
+   :project: Zephyr
+
+TLS credentials
+***************
+
+.. doxygengroup:: tls_credentials
    :project: Zephyr

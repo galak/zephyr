@@ -6,11 +6,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if defined(CONFIG_NET_DEBUG_APP)
-#define SYS_LOG_DOMAIN "net/app"
-#define NET_SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_app, CONFIG_NET_APP_LOG_LEVEL);
 
 #if defined(CONFIG_STDOUT_CONSOLE)
 #include <stdio.h>
@@ -43,22 +40,28 @@
 #define DTLS_TIMEOUT K_SECONDS(15)
 #endif
 
-#if defined(CONFIG_NET_DEBUG_APP)
+#if CONFIG_NET_APP_LOG_LEVEL >= LOG_LEVEL_DBG
 static sys_slist_t _net_app_instances;
+#endif
 
 void _net_app_register(struct net_app_ctx *ctx)
 {
+#if CONFIG_NET_APP_LOG_LEVEL >= LOG_LEVEL_DBG
 	sys_slist_prepend(&_net_app_instances, &ctx->node);
+#endif
 }
 
 void _net_app_unregister(struct net_app_ctx *ctx)
 {
+#if CONFIG_NET_APP_LOG_LEVEL >= LOG_LEVEL_DBG
 	sys_slist_find_and_remove(&_net_app_instances, &ctx->node);
+#endif
 }
 
 static void net_app_foreach(net_app_ctx_cb_t cb, enum net_app_type type,
 			    void *user_data)
 {
+#if CONFIG_NET_APP_LOG_LEVEL >= LOG_LEVEL_DBG
 	struct net_app_ctx *ctx;
 
 	SYS_SLIST_FOR_EACH_CONTAINER(&_net_app_instances, ctx, node) {
@@ -71,6 +74,7 @@ static void net_app_foreach(net_app_ctx_cb_t cb, enum net_app_type type,
 			cb(ctx, user_data);
 		}
 	}
+#endif
 }
 
 void net_app_server_foreach(net_app_ctx_cb_t cb, void *user_data)
@@ -82,7 +86,6 @@ void net_app_client_foreach(net_app_ctx_cb_t cb, void *user_data)
 {
 	net_app_foreach(cb, NET_APP_CLIENT, user_data);
 }
-#endif /* CONFIG_NET_DEBUG_APP */
 
 #if defined(CONFIG_NET_CONTEXT_NET_PKT_POOL)
 int net_app_set_net_pkt_pool(struct net_app_ctx *ctx,
@@ -96,7 +99,6 @@ int net_app_set_net_pkt_pool(struct net_app_ctx *ctx,
 }
 #endif /* CONFIG_NET_CONTEXT_NET_PKT_POOL */
 
-#if defined(CONFIG_NET_DEBUG_APP)
 char *_net_app_sprint_ipaddr(char *buf, int buflen,
 			     const struct sockaddr *addr)
 {
@@ -139,11 +141,10 @@ void _net_app_print_info(struct net_app_ctx *ctx)
 			       &ctx->default_ctx->remote);
 
 	NET_DBG("net app connect %s %s %s",
-		local,
+		log_strdup(local),
 		ctx->app_type == NET_APP_CLIENT ? "->" : "<-",
-		remote);
+		log_strdup(remote));
 }
-#endif /* CONFIG_NET_DEBUG_APP */
 
 #if defined(CONFIG_NET_APP_SERVER) || defined(CONFIG_NET_APP_CLIENT)
 void _net_app_received(struct net_context *net_ctx,
@@ -724,7 +725,7 @@ struct net_context *select_server_ctx(struct net_app_ctx *ctx,
 #define select_server_ctx(...) NULL
 #endif /* CONFIG_NET_APP_SERVER */
 
-#if NET_LOG_ENABLED > 0
+#if CONFIG_NET_APP_LOG_LEVEL >= LOG_LEVEL_ERR
 struct net_context *_net_app_select_net_ctx_debug(struct net_app_ctx *ctx,
 						  const struct sockaddr *dst,
 						  const char *caller,
@@ -742,7 +743,9 @@ struct net_context *_net_app_select_net_ctx(struct net_app_ctx *ctx,
 		net_ctx = select_server_ctx(ctx, dst);
 	}
 
+#if CONFIG_NET_APP_LOG_LEVEL >= LOG_LEVEL_ERR
 	NET_DBG("Selecting %p net_ctx (%s():%d)", net_ctx, caller, line);
+#endif
 
 	return net_ctx;
 }
@@ -1157,7 +1160,7 @@ int net_app_close2(struct net_app_ctx *ctx, struct net_context *net_ctx)
 }
 
 #if defined(CONFIG_NET_APP_TLS) || defined(CONFIG_NET_APP_DTLS)
-#if defined(MBEDTLS_DEBUG_C) && defined(CONFIG_NET_DEBUG_APP)
+#if defined(MBEDTLS_DEBUG_C) && (CONFIG_NET_APP_LOG_LEVEL >= LOG_LEVEL_DBG)
 static void my_debug(void *ctx, int level,
 		     const char *file, int line, const char *str)
 {
@@ -1180,9 +1183,10 @@ static void my_debug(void *ctx, int level,
 		((char *)str)[len - 1] = '\0';
 	}
 
-	NET_DBG("%s:%04d: |%d| %s", basename, line, level, str);
+	NET_DBG("%s:%04d: |%d| %s", basename, line, level,
+		log_strdup(str));
 }
-#endif /* MBEDTLS_DEBUG_C && CONFIG_NET_DEBUG_APP */
+#endif /* MBEDTLS_DEBUG_C && CONFIG_NET_APP_LOG_LEVEL >= LOG_LEVEL_DBG */
 
 static void ssl_sent(struct net_context *context,
 		     int status, void *token, void *user_data)
@@ -1694,10 +1698,6 @@ static int tls_sendto(struct net_app_ctx *ctx,
 				 tx_data->pkt,
 				 net_pkt_ip_hdr_len(tx_data->pkt),
 				 len);
-	if (ret < 0) {
-		NET_DBG("Cannot linearize send data (%d)", ret);
-		goto out;
-	}
 
 	if (ret != len) {
 		NET_DBG("Linear copy error (%u vs %d)", len, ret);
@@ -2217,7 +2217,7 @@ int _net_app_tls_init(struct net_app_ctx *ctx, int client_or_server)
 	mbedtls_entropy_init(&ctx->tls.mbedtls.entropy);
 	mbedtls_ctr_drbg_init(&ctx->tls.mbedtls.ctr_drbg);
 
-#if defined(MBEDTLS_DEBUG_C) && defined(CONFIG_NET_DEBUG_APP)
+#if defined(MBEDTLS_DEBUG_C) && CONFIG_NET_APP_LOG_LEVEL >= LOG_LEVEL_DBG
 	mbedtls_debug_set_threshold(CONFIG_MBEDTLS_DEBUG_LEVEL);
 	mbedtls_ssl_conf_dbg(&ctx->tls.mbedtls.conf, my_debug, NULL);
 #endif

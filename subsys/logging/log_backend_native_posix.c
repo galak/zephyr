@@ -45,7 +45,7 @@ static void preprint_char(int c)
 
 static u8_t buf[_STDOUT_BUF_SIZE];
 
-int char_out(u8_t *data, size_t length, void *ctx)
+static int char_out(u8_t *data, size_t length, void *ctx)
 {
 	for (size_t i = 0; i < length; i++) {
 		preprint_char(data[i]);
@@ -54,14 +54,14 @@ int char_out(u8_t *data, size_t length, void *ctx)
 	return length;
 }
 
-LOG_OUTPUT_DEFINE(log_output, char_out, buf, 1);
+LOG_OUTPUT_DEFINE(log_output, char_out, buf, sizeof(buf));
 
 static void put(const struct log_backend *const backend,
 		struct log_msg *msg)
 {
 	log_msg_get(msg);
 
-	u32_t flags = 0;
+	u32_t flags = LOG_OUTPUT_FLAG_LEVEL | LOG_OUTPUT_FLAG_TIMESTAMP;
 
 	if (IS_ENABLED(CONFIG_LOG_BACKEND_SHOW_COLOR)) {
 		if (posix_trace_over_tty(0)) {
@@ -81,12 +81,22 @@ static void put(const struct log_backend *const backend,
 
 static void panic(struct log_backend const *const backend)
 {
-	/* Nothing to be done, this backend can always process logs */
+	log_output_flush(&log_output);
+}
+
+static void dropped(const struct log_backend *const backend, u32_t cnt)
+{
+	ARG_UNUSED(backend);
+
+	log_output_dropped_process(&log_output, cnt);
 }
 
 const struct log_backend_api log_backend_native_posix_api = {
 	.put = put,
 	.panic = panic,
+	.dropped = dropped,
 };
 
-LOG_BACKEND_DEFINE(log_backend_native_posix, log_backend_native_posix_api);
+LOG_BACKEND_DEFINE(log_backend_native_posix,
+		   log_backend_native_posix_api,
+		   true);

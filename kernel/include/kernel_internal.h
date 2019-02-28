@@ -49,7 +49,7 @@ extern void _setup_new_thread(struct k_thread *new_thread,
 			      k_thread_stack_t *stack, size_t stack_size,
 			      k_thread_entry_t entry,
 			      void *p1, void *p2, void *p3,
-			      int prio, u32_t options);
+			      int prio, u32_t options, const char *name);
 
 #ifdef CONFIG_USERSPACE
 /**
@@ -225,6 +225,10 @@ extern u32_t z_early_boot_rand32_get(void);
 
 #if CONFIG_STACK_POINTER_RANDOM
 extern int z_stack_adjust_initialized;
+#endif
+
+#if defined(CONFIG_ARCH_HAS_CUSTOM_BUSY_WAIT)
+extern void z_arch_busy_wait(u32_t usec_to_wait);
 #endif
 
 #ifdef __cplusplus

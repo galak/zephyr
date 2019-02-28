@@ -8,15 +8,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if defined(CONFIG_NET_DEBUG_IPV6)
-#define SYS_LOG_DOMAIN "net/ipv6-mld"
-#define NET_LOG_ENABLED 1
-
-/* By default this prints too much data, set the value to 1 to see
- * neighbor cache contents.
- */
-#define NET_DEBUG_NBR 0
-#endif
+#include <logging/log.h>
+LOG_MODULE_DECLARE(net_ipv6, CONFIG_NET_IPV6_LOG_LEVEL);
 
 #include <errno.h>
 #include <net/net_core.h>
@@ -34,7 +27,6 @@
 #include "nbr.h"
 #include "6lo.h"
 #include "route.h"
-#include "rpl.h"
 #include "net_stats.h"
 
 /* Timeout for various buffer allocations in this file. */
@@ -95,8 +87,7 @@ static int send_mldv2_raw(struct net_if *iface, struct net_buf *frags)
 	/* Sent to all MLDv2-capable routers */
 	net_ipv6_addr_create(&dst, 0xff02, 0, 0, 0, 0, 0, 0, 0x0016);
 
-	pkt = net_pkt_get_reserve_tx(net_if_get_ll_reserve(iface, &dst),
-				     NET_BUF_TIMEOUT);
+	pkt = net_pkt_get_reserve_tx(NET_BUF_TIMEOUT);
 	if (!pkt) {
 		return -ENOMEM;
 	}
@@ -132,7 +123,6 @@ static int send_mldv2_raw(struct net_if *iface, struct net_buf *frags)
 
 #define ROUTER_ALERT_LEN 8
 
-	pkt->frags->len = NET_IPV6ICMPH_LEN + ROUTER_ALERT_LEN;
 	net_pkt_set_iface(pkt, iface);
 
 	/* Insert the actual multicast record(s) here */
@@ -148,7 +138,7 @@ static int send_mldv2_raw(struct net_if *iface, struct net_buf *frags)
 	if (!net_pkt_write_be16_timeout(pkt, pkt->frags,
 					NET_IPV6H_LEN + ROUTER_ALERT_LEN + 2,
 					&pos,
-					ntohs(~net_calc_chksum_icmpv6(pkt)),
+					ntohs(net_calc_chksum_icmpv6(pkt)),
 					NET_BUF_TIMEOUT)) {
 		ret = -ENOMEM;
 		goto drop;
@@ -179,8 +169,7 @@ static int send_mldv2(struct net_if *iface, const struct in6_addr *addr,
 	struct net_pkt *pkt;
 	int ret;
 
-	pkt = net_pkt_get_reserve_tx(net_if_get_ll_reserve(iface, NULL),
-				     NET_BUF_TIMEOUT);
+	pkt = net_pkt_get_reserve_tx(NET_BUF_TIMEOUT);
 	if (!pkt) {
 		return -ENOMEM;
 	}
@@ -261,8 +250,7 @@ static void send_mld_report(struct net_if *iface)
 
 	NET_ASSERT(ipv6);
 
-	pkt = net_pkt_get_reserve_tx(net_if_get_ll_reserve(iface, NULL),
-				     NET_BUF_TIMEOUT);
+	pkt = net_pkt_get_reserve_tx(NET_BUF_TIMEOUT);
 	if (!pkt) {
 		return;
 	}
@@ -300,20 +288,15 @@ drop:
 	net_pkt_unref(pkt);
 }
 
-#if defined(CONFIG_NET_DEBUG_IPV6)
 #define dbg_addr(action, pkt_str, src, dst)				\
 	do {								\
 		NET_DBG("%s %s from %s to %s", action, pkt_str,         \
-			net_sprint_ipv6_addr(src),                      \
-			net_sprint_ipv6_addr(dst));                     \
+			log_strdup(net_sprint_ipv6_addr(src)),		\
+			log_strdup(net_sprint_ipv6_addr(dst)));		\
 	} while (0)
 
 #define dbg_addr_recv(pkt_str, src, dst)	\
 	dbg_addr("Received", pkt_str, src, dst)
-#else
-#define dbg_addr(...)
-#define dbg_addr_recv(...)
-#endif /* CONFIG_NET_DEBUG_IPV6 */
 
 static enum net_verdict handle_mld_query(struct net_pkt *pkt)
 {
@@ -366,7 +349,7 @@ static enum net_verdict handle_mld_query(struct net_pkt *pkt)
 	/* Currently we only support a unspecified address query. */
 	if (!net_ipv6_addr_cmp(&mcast, net_ipv6_unspecified_address())) {
 		NET_DBG("Only supporting unspecified address query (%s)",
-			net_sprint_ipv6_addr(&mcast));
+			log_strdup(net_sprint_ipv6_addr(&mcast)));
 		goto drop;
 	}
 

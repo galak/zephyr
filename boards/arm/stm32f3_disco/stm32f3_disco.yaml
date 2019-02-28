@@ -5,6 +5,7 @@ arch: arm
 toolchain:
   - zephyr
   - gnuarmemb
+  - xtools
 ram: 40
 supported:
   - gpio
@@ -12,3 +13,4 @@ supported:
   - rtc
   - spi
   - usb_device
+  - lsm303dlhc

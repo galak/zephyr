@@ -61,11 +61,6 @@ static pfunc func_array[] = {
 	(pfunc)k_mem_slab_num_free_get,
 
 #ifdef TEST_max
-	/* alerts */
-	(pfunc)k_alert_init,
-	(pfunc)k_alert_send,
-	(pfunc)k_alert_recv,
-
 	/* message queues */
 	(pfunc)k_msgq_init,
 	(pfunc)k_msgq_put,
@@ -133,7 +128,9 @@ static pfunc func_array[] = {
 	(pfunc)k_thread_priority_set,
 	(pfunc)k_thread_suspend,
 	(pfunc)k_thread_resume,
+#ifdef CONFIG_TIMESLICING
 	(pfunc)k_sched_time_slice_set,
+#endif
 	(pfunc)k_is_in_isr,
 	(pfunc)k_thread_custom_data_set,
 	(pfunc)k_thread_custom_data_get,

@@ -2,87 +2,24 @@
 if PM_CONTROL_OS
 menu "OS Power Management"
 
-if SYS_POWER_LOW_POWER_STATE
-config PM_CONTROL_OS_LPS
-	bool "Platform supports LPS"
-	help
-	  Select this option if SoC support LPS state.
+source "subsys/power/policy/Kconfig"
 
-if PM_CONTROL_OS_LPS
-config PM_LPS_MIN_RES
-	int "LPS minimum residency"
-	default 5
+config PM_CONTROL_STATE_LOCK
+	bool "Enable PM state locking capability"
 	help
-	  Minimum residency in ticks to enter LPS state.
-endif
+	  Enable OS Power Management state locking capability
+	  if any application wants to temporarily disable certain
+	  System Low Power states while doing any critical work
+	  or needs quick response from hardware resources.
 
-config PM_CONTROL_OS_LPS_1
-	bool "Platform supports LPS_1"
+config PM_CONTROL_OS_DEBUG
+	bool "Enable OS Power Management debug hooks"
 	help
-	  Select this option if SoC support LPS_1 state.
+	  Enable OS Power Management debugging hooks.
 
-if PM_CONTROL_OS_LPS_1
-config PM_LPS_1_MIN_RES
-	int "LPS_1 minimum residency"
-	default 10
-	help
-	  Minimum residency in ticks to enter LPS_1 state.
-endif
-
-config PM_CONTROL_OS_LPS_2
-	bool "Platform supports LPS_2"
-	help
-	  Select this option if SoC support LPS_2 state.
-
-if PM_CONTROL_OS_LPS_2
-config PM_LPS_2_MIN_RES
-	int "LPS_2 minimum residency"
-	default 30
-	help
-	  Minimum residency in ticks to enter LPS_2 state.
-endif
-endif # SYS_POWER_LOW_POWER_STATE
-
-if SYS_POWER_DEEP_SLEEP
-config PM_CONTROL_OS_DEEP_SLEEP
-	bool "Platform supports DEEP_SLEEP"
-	help
-	  Select this option if SoC support DEEP_SLEEP state.
-
-if PM_CONTROL_OS_DEEP_SLEEP
-config PM_DEEP_SLEEP_MIN_RES
-	int "DEEP_SLEEP minimum residency"
-	default 60
-	help
-	  Minimum residency in ticks to enter DEEP_SLEEP state.
-endif
-
-config PM_CONTROL_OS_DEEP_SLEEP_1
-	bool "Platform supports DEEP_SLEEP_1"
-	help
-	  Select this option if SoC support DEEP_SLEEP_1 state.
-
-if PM_CONTROL_OS_DEEP_SLEEP_1
-config PM_DEEP_SLEEP_1_MIN_RES
-	int "DEEP_SLEEP_1 minimum residency"
-	default 90
-	help
-	  Minimum residency in ticks to enter DEEP_SLEEP_1 state.
-endif
-
-config PM_CONTROL_OS_DEEP_SLEEP_2
-	bool "Platform supports DEEP_SLEEP_2"
-	help
-	  Select this option if SoC support DEEP_SLEEP_2 state.
-
-if PM_CONTROL_OS_DEEP_SLEEP_2
-config PM_DEEP_SLEEP_2_MIN_RES
-	int "DEEP_SLEEP_2 minimum residency"
-	default 120
-	help
-	  Minimum residency in ticks to enter DEEP_SLEEP_2 state.
-endif
-endif # PM_CONTROL_OS_DEEP_SLEEP
+module = PM
+module-str = Power Management
+source "subsys/logging/Kconfig.template.log_config"
 
 endmenu
 endif # PM_CONTROL_OS

@@ -9,10 +9,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if defined(CONFIG_NET_DEBUG_IPV4_AUTOCONF)
-#define SYS_LOG_DOMAIN "net/ipv4ll"
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_ipv4_autoconf, CONFIG_NET_IPV4_AUTO_LOG_LEVEL);
 
 #include "net_private.h"
 #include <errno.h>
@@ -37,8 +35,7 @@ static struct net_pkt *ipv4_autoconf_prepare_arp(struct net_if *iface)
 	struct net_pkt *pkt;
 	struct net_buf *frag;
 
-	pkt = net_pkt_get_reserve_tx(sizeof(struct net_eth_hdr),
-				     BUF_ALLOC_TIMEOUT);
+	pkt = net_pkt_get_reserve_tx(BUF_ALLOC_TIMEOUT);
 	if (!pkt) {
 		goto fail;
 	}
@@ -117,12 +114,9 @@ enum net_verdict net_ipv4_autoconf_input(struct net_if *iface,
 		return NET_DROP;
 	}
 
-	if (net_pkt_get_len(pkt) < (sizeof(struct net_arp_hdr) -
-				    net_pkt_ll_reserve(pkt))) {
+	if (net_pkt_get_len(pkt) < sizeof(struct net_arp_hdr)) {
 		NET_DBG("Invalid ARP header (len %zu, min %zu bytes)",
-			net_pkt_get_len(pkt),
-			sizeof(struct net_arp_hdr) -
-			net_pkt_ll_reserve(pkt));
+			net_pkt_get_len(pkt), sizeof(struct net_arp_hdr));
 		return NET_DROP;
 	}
 
@@ -141,9 +135,9 @@ enum net_verdict net_ipv4_autoconf_input(struct net_if *iface,
 	}
 
 	NET_DBG("Conflict detected from %s for %s, state %d",
-		net_sprint_ll_addr((u8_t *)&arp_hdr->src_hwaddr,
-				   arp_hdr->hwlen),
-		net_sprint_ipv4_addr(&arp_hdr->dst_ipaddr),
+		log_strdup(net_sprint_ll_addr((u8_t *)&arp_hdr->src_hwaddr,
+					      arp_hdr->hwlen)),
+		log_strdup(net_sprint_ipv4_addr(&arp_hdr->dst_ipaddr)),
 		cfg->ipv4auto.state);
 
 	cfg->ipv4auto.conflict_cnt++;

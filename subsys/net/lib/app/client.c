@@ -6,11 +6,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if defined(CONFIG_NET_DEBUG_APP)
-#define SYS_LOG_DOMAIN "net/app"
-#define NET_SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_DECLARE(net_app, CONFIG_NET_APP_LOG_LEVEL);
 
 #include <zephyr.h>
 #include <string.h>
@@ -80,7 +77,8 @@ static int resolve_name(struct net_app_ctx *ctx,
 	ret = dns_get_addr_info(peer_addr_str, type, &ctx->client.dns_id,
 				dns_cb, ctx, timeout);
 	if (ret < 0) {
-		NET_ERR("Cannot resolve %s (%d)", peer_addr_str, ret);
+		NET_ERR("Cannot resolve %s (%d)", log_strdup(peer_addr_str),
+			ret);
 		ctx->client.dns_id = 0;
 		return ret;
 	}
@@ -89,7 +87,8 @@ static int resolve_name(struct net_app_ctx *ctx,
 	 * the DNS will timeout before the semaphore.
 	 */
 	if (k_sem_take(&ctx->client.dns_wait, timeout + K_SECONDS(1))) {
-		NET_ERR("Timeout while resolving %s", peer_addr_str);
+		NET_ERR("Timeout while resolving %s",
+			log_strdup(peer_addr_str));
 		ctx->client.dns_id = 0;
 		return -ETIMEDOUT;
 	}
@@ -110,14 +109,14 @@ static int try_resolve(struct net_app_ctx *ctx,
 		       s32_t timeout)
 {
 #if !defined(CONFIG_DNS_RESOLVER)
-	NET_ERR("Invalid IP address %s", peer_addr_str);
 	return -EINVAL;
 #else
 	int ret;
 
 	ret = resolve_name(ctx, peer_addr_str, type, timeout);
 	if (ret < 0) {
-		NET_ERR("Cannot resolve %s (%d)", peer_addr_str, ret);
+		NET_ERR("Cannot resolve %s (%d)",
+			log_strdup(peer_addr_str), ret);
 	}
 
 	return ret;
@@ -197,7 +196,7 @@ static int get_port_number(const char *peer_addr_str,
 			   char *buf,
 			   size_t buf_len)
 {
-	u16_t port = 0;
+	u16_t port = 0U;
 	char *ptr;
 	int count, i;
 
@@ -379,7 +378,7 @@ int net_app_init_client(struct net_app_ctx *ctx,
 	}
 
 	if (client_addr) {
-		u16_t local_port = 0;
+		u16_t local_port = 0U;
 		bool empty_addr = false;
 
 		addr.sa_family = remote_addr.sa_family;
@@ -387,7 +386,7 @@ int net_app_init_client(struct net_app_ctx *ctx,
 		/* local_port is used if the IP address isn't specified */
 #if defined(CONFIG_NET_IPV4)
 		if (client_addr->sa_family == AF_INET) {
-			empty_addr = net_is_ipv4_addr_unspecified(
+			empty_addr = net_ipv4_is_addr_unspecified(
 					&net_sin(client_addr)->sin_addr);
 			local_port = net_sin(client_addr)->sin_port;
 		}
@@ -395,7 +394,7 @@ int net_app_init_client(struct net_app_ctx *ctx,
 
 #if defined(CONFIG_NET_IPV6)
 		if (client_addr->sa_family == AF_INET6) {
-			empty_addr = net_is_ipv6_addr_unspecified(
+			empty_addr = net_ipv6_is_addr_unspecified(
 					&net_sin6(client_addr)->sin6_addr);
 			local_port = net_sin6(client_addr)->sin6_port;
 		}
@@ -639,7 +638,7 @@ static void check_local_address(struct net_app_ctx *ctx,
 		struct in6_addr *raddr;
 
 		laddr = &net_sin6(&ctx->ipv6.local)->sin6_addr;
-		if (!net_is_ipv6_addr_unspecified(laddr)) {
+		if (!net_ipv6_is_addr_unspecified(laddr)) {
 			return;
 		}
 
@@ -661,7 +660,7 @@ static void check_local_address(struct net_app_ctx *ctx,
 		struct net_if *iface;
 
 		laddr = &net_sin(&ctx->ipv4.local)->sin_addr;
-		if (!net_is_ipv4_addr_unspecified(laddr)) {
+		if (!net_ipv4_is_addr_unspecified(laddr)) {
 			return;
 		}
 

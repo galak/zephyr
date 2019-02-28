@@ -13,9 +13,10 @@
  * a websocket connection.
  */
 
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_WEBSOCKET_CONSOLE_LEVEL
-#define SYS_LOG_DOMAIN "ws/console"
-#include <logging/sys_log.h>
+#define LOG_LEVEL CONFIG_WEBSOCKET_CONSOLE_LOG_LEVEL
+#define LOG_DOMAIN ws_console
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_DOMAIN);
 
 #include <zephyr.h>
 #include <init.h>
@@ -26,19 +27,19 @@
 #include <net/net_pkt.h>
 #include <net/websocket_console.h>
 
-#define NVT_NUL	0
-#define NVT_LF	10
-#define NVT_CR	13
+#define NVT_NUL 0
+#define NVT_LF  10
+#define NVT_CR  13
 
-#define WS_CONSOLE_STACK_SIZE	CONFIG_WEBSOCKET_CONSOLE_STACK_SIZE
-#define WS_CONSOLE_PRIORITY	CONFIG_WEBSOCKET_CONSOLE_PRIO
-#define WS_CONSOLE_TIMEOUT	K_MSEC(CONFIG_WEBSOCKET_CONSOLE_SEND_TIMEOUT)
-#define WS_CONSOLE_LINES	CONFIG_WEBSOCKET_CONSOLE_LINE_BUF_NUMBERS
-#define WS_CONSOLE_LINE_SIZE	CONFIG_WEBSOCKET_CONSOLE_LINE_BUF_SIZE
-#define WS_CONSOLE_TIMEOUT	K_MSEC(CONFIG_WEBSOCKET_CONSOLE_SEND_TIMEOUT)
-#define WS_CONSOLE_THRESHOLD	CONFIG_WEBSOCKET_CONSOLE_SEND_THRESHOLD
+#define WS_CONSOLE_STACK_SIZE   CONFIG_WEBSOCKET_CONSOLE_STACK_SIZE
+#define WS_CONSOLE_PRIORITY     CONFIG_WEBSOCKET_CONSOLE_PRIO
+#define WS_CONSOLE_TIMEOUT      K_MSEC(CONFIG_WEBSOCKET_CONSOLE_SEND_TIMEOUT)
+#define WS_CONSOLE_LINES        CONFIG_WEBSOCKET_CONSOLE_LINE_BUF_NUMBERS
+#define WS_CONSOLE_LINE_SIZE    CONFIG_WEBSOCKET_CONSOLE_LINE_BUF_SIZE
+#define WS_CONSOLE_TIMEOUT      K_MSEC(CONFIG_WEBSOCKET_CONSOLE_SEND_TIMEOUT)
+#define WS_CONSOLE_THRESHOLD    CONFIG_WEBSOCKET_CONSOLE_SEND_THRESHOLD
 
-#define WS_CONSOLE_MIN_MSG	2
+#define WS_CONSOLE_MIN_MSG      2
 
 /* These 2 structures below are used to store the console output
  * before sending it to the client. This is done to keep some
@@ -100,11 +101,11 @@ static void ws_rb_init(void)
 {
 	int i;
 
-	ws_rb.line_in = 0;
-	ws_rb.line_out = 0;
+	ws_rb.line_in = 0U;
+	ws_rb.line_out = 0U;
 
 	for (i = 0; i < WS_CONSOLE_LINES; i++) {
-		ws_rb.l_bufs[i].len = 0;
+		ws_rb.l_bufs[i].len = 0U;
 	}
 }
 
@@ -126,10 +127,10 @@ static void ws_rb_switch(void)
 	ws_rb.line_in++;
 
 	if (ws_rb.line_in == WS_CONSOLE_LINES) {
-		ws_rb.line_in = 0;
+		ws_rb.line_in = 0U;
 	}
 
-	ws_rb.l_bufs[ws_rb.line_in].len = 0;
+	ws_rb.l_bufs[ws_rb.line_in].len = 0U;
 
 	/* Unfortunately, we don't have enough line buffer,
 	 * so we eat the next to be sent.
@@ -137,7 +138,7 @@ static void ws_rb_switch(void)
 	if (ws_rb.line_in == ws_rb.line_out) {
 		ws_rb.line_out++;
 		if (ws_rb.line_out == WS_CONSOLE_LINES) {
-			ws_rb.line_out = 0;
+			ws_rb.line_out = 0U;
 		}
 	}
 
@@ -151,7 +152,7 @@ static inline struct line_buf *ws_rb_get_line_out(void)
 
 	ws_rb.line_out++;
 	if (ws_rb.line_out == WS_CONSOLE_LINES) {
-		ws_rb.line_out = 0;
+		ws_rb.line_out = 0U;
 	}
 
 	if (!ws_rb.l_bufs[out].len) {
@@ -176,7 +177,7 @@ static int ws_console_out(int c)
 	lb->buf[lb->len++] = (char)c;
 
 	if (c == '\n' || lb->len == WS_CONSOLE_LINE_SIZE - 1) {
-		lb->buf[lb->len-1] = NVT_CR;
+		lb->buf[lb->len - 1] = NVT_CR;
 		lb->buf[lb->len++] = NVT_LF;
 		ws_rb_switch();
 		yield = true;
@@ -235,13 +236,13 @@ static inline void ws_handle_input(struct net_pkt *pkt)
 	input->line[len] = NVT_NUL;
 
 	/* LF/CR will be removed if only the line is not NUL terminated */
-	if (input->line[len-1] != NVT_NUL) {
-		if (input->line[len-1] == NVT_LF) {
-			input->line[len-1] = NVT_NUL;
+	if (input->line[len - 1] != NVT_NUL) {
+		if (input->line[len - 1] == NVT_LF) {
+			input->line[len - 1] = NVT_NUL;
 		}
 
-		if (input->line[len-2] == NVT_CR) {
-			input->line[len-2] = NVT_NUL;
+		if (input->line[len - 2] == NVT_CR) {
+			input->line[len - 2] = NVT_NUL;
 		}
 	}
 
@@ -273,7 +274,7 @@ static bool ws_console_send(struct http_ctx *console)
 				  NULL, NULL);
 
 		/* We reinitialize the line buffer */
-		lb->len = 0;
+		lb->len = 0U;
 	}
 
 	return true;
@@ -328,7 +329,7 @@ static int ws_console_init(struct device *arg)
 			NULL, NULL, NULL,
 			K_PRIO_COOP(WS_CONSOLE_PRIORITY), 0, K_MSEC(10));
 
-	SYS_LOG_INF("Websocket console initialized");
+	LOG_INF("Websocket console initialized");
 
 	return 0;
 }

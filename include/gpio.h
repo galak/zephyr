@@ -39,19 +39,6 @@ extern "C" {
  * @endcond
  */
 
-/**
- * @deprecated
- * Deprecated. Formerly used to enable a GPIO pin.
- */
-#define GPIO_PIN_ENABLE		(0 __DEPRECATED_MACRO)
-
-/**
- * @deprecated
- * Deprecated. Formerly used to disable a GPIO pin.
- */
-#define GPIO_PIN_DISABLE	(0 __DEPRECATED_MACRO)
-
-
 struct gpio_callback;
 
 /**
@@ -90,13 +77,17 @@ struct gpio_callback {
 	/** Actual callback function being called when relevant. */
 	gpio_callback_handler_t handler;
 
-	/** A mask of pins the callback is interested in, if 0 the callback
-	 * will never be called. Such pin_mask can be modified whenever
+	/** A mask of pins (pin_mask) or a specific pin (pin) the callback
+	 * is interested in, if 0 the callback will never be called.
+	 * The pin_mask or pin can be modified whenever
 	 * necessary by the owner, and thus will affect the handler being
 	 * called or not. The selected pins must be configured to trigger
 	 * an interrupt.
 	 */
-	u32_t pin_mask;
+	union {
+		u32_t pin_mask;
+		u32_t pin;
+	};
 };
 
 /**

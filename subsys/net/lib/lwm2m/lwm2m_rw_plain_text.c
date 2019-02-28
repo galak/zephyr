@@ -56,9 +56,12 @@
  * - Cleanup integer parsing
  */
 
-#define SYS_LOG_DOMAIN "lib/lwm2m_plain_text"
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_LWM2M_LEVEL
-#include <logging/sys_log.h>
+#define LOG_MODULE_NAME net_lwm2m_plain_text
+#define LOG_LEVEL CONFIG_LWM2M_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -350,7 +353,7 @@ int do_write_op_plain_text(struct lwm2m_engine_obj *obj,
 	struct lwm2m_engine_obj_field *obj_field;
 	struct lwm2m_engine_res_inst *res = NULL;
 	int ret, i;
-	u8_t created = 0;
+	u8_t created = 0U;
 
 	ret = lwm2m_get_or_create_engine_obj(context, &obj_inst, &created);
 	if (ret < 0) {
@@ -381,6 +384,6 @@ int do_write_op_plain_text(struct lwm2m_engine_obj *obj,
 		return -ENOENT;
 	}
 
-	context->path->level = 3;
+	context->path->level = 3U;
 	return lwm2m_write_handler(obj_inst, res, obj_field, context);
 }

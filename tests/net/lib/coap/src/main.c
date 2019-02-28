@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_test, CONFIG_COAP_LOG_LEVEL);
+
 #include <errno.h>
 #include <zephyr/types.h>
 #include <stdbool.h>
@@ -75,7 +78,7 @@ static int test_build_empty_pdu(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -125,11 +128,11 @@ static int test_build_simple_pdu(void)
 	struct net_pkt *pkt;
 	struct net_buf *frag;
 	const char token[] = "token";
-	u8_t format = 0;
+	u8_t format = 0U;
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -205,7 +208,7 @@ static int test_parse_empty_pdu(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -295,7 +298,7 @@ static int test_parse_empty_pdu_1(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -388,7 +391,7 @@ static int test_parse_simple_pdu(void)
 	int result = TC_FAIL;
 	int r, count = ARRAY_SIZE(options) - 1;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -496,7 +499,7 @@ static int test_retransmit_second_round(void)
 	int r;
 	u16_t id;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -542,7 +545,7 @@ static int test_retransmit_second_round(void)
 		goto done;
 	}
 
-	resp_pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	resp_pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!resp_pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -683,7 +686,7 @@ static int server_resource_1_get(struct coap_resource *resource,
 
 	coap_register_observer(resource, observer);
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		return -ENOMEM;
@@ -777,7 +780,7 @@ static int test_observer_server(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -821,7 +824,7 @@ static int test_observer_server(void)
 
 	net_pkt_unref(pkt);
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -901,7 +904,7 @@ static int test_observer_client(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -1027,7 +1030,7 @@ static int test_block_size(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -1115,7 +1118,7 @@ static int test_block_size(void)
 	/* Suppose that pkt was sent */
 	net_pkt_unref(pkt);
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -1208,7 +1211,7 @@ static int test_block_2_size(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -1296,7 +1299,7 @@ static int test_block_2_size(void)
 	/* Suppose that pkt was sent */
 	net_pkt_unref(pkt);
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -1466,7 +1469,7 @@ static int test_parse_malformed_opt(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -1523,7 +1526,7 @@ static int test_parse_malformed_opt_len(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -1580,7 +1583,7 @@ static int test_parse_malformed_opt_ext(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -1637,7 +1640,7 @@ static int test_parse_malformed_opt_len_ext(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;
@@ -1694,7 +1697,7 @@ static int test_parse_malformed_marker(void)
 	int result = TC_FAIL;
 	int r;
 
-	pkt = net_pkt_get_reserve(&coap_pkt_slab, 0, K_NO_WAIT);
+	pkt = net_pkt_get_reserve(&coap_pkt_slab, K_NO_WAIT);
 	if (!pkt) {
 		TC_PRINT("Could not get packet from pool\n");
 		goto done;

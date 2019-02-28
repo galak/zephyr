@@ -4,7 +4,14 @@ file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/kconfig/include/generated)
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/kconfig/include/config)
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/include/generated)
 
-set_ifndef(KCONFIG_ROOT ${ZEPHYR_BASE}/Kconfig)
+if(KCONFIG_ROOT)
+  # KCONFIG_ROOT has either been specified as a CMake variable or is
+  # already in the CMakeCache.txt. This has precedence.
+elseif(EXISTS   ${APPLICATION_SOURCE_DIR}/Kconfig)
+  set(KCONFIG_ROOT ${APPLICATION_SOURCE_DIR}/Kconfig)
+else()
+  set(KCONFIG_ROOT ${ZEPHYR_BASE}/Kconfig)
+endif()
 
 set(BOARD_DEFCONFIG ${BOARD_DIR}/${BOARD}_defconfig)
 set(DOTCONFIG       ${PROJECT_BINARY_DIR}/.config)
@@ -14,9 +21,9 @@ string(REPLACE " " ";" CONF_FILE_AS_LIST "${CONF_FILE}")
 endif()
 
 set(ENV{srctree}            ${ZEPHYR_BASE})
-set(ENV{KERNELVERSION}      ${PROJECT_VERSION})
+set(ENV{KERNELVERSION}      ${KERNELVERSION})
 set(ENV{KCONFIG_CONFIG}     ${DOTCONFIG})
-set(ENV{KCONFIG_AUTOHEADER} ${AUTOCONF_H})
+set(ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 
 # Set environment variables so that Kconfig can prune Kconfig source
 # files for other architectures
@@ -27,8 +34,9 @@ set(ENV{SOC_DIR}   ${SOC_DIR})
 add_custom_target(
   menuconfig
   ${CMAKE_COMMAND} -E env
+  PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
   srctree=${ZEPHYR_BASE}
-  KERNELVERSION=${PROJECT_VERSION}
+  KERNELVERSION=${KERNELVERSION}
   KCONFIG_CONFIG=${DOTCONFIG}
   ARCH=$ENV{ARCH}
   BOARD_DIR=$ENV{BOARD_DIR}
@@ -139,8 +147,8 @@ execute_process(
   ${PYTHON_EXECUTABLE}
   ${ZEPHYR_BASE}/scripts/kconfig/kconfig.py
   ${KCONFIG_ROOT}
-  ${PROJECT_BINARY_DIR}/.config
-  ${PROJECT_BINARY_DIR}/include/generated/autoconf.h
+  ${DOTCONFIG}
+  ${AUTOCONF_H}
   ${merge_fragments}
   WORKING_DIRECTORY ${APPLICATION_SOURCE_DIR}
   # The working directory is set to the app dir such that the user
@@ -158,5 +166,24 @@ endforeach()
 
 add_custom_target(config-sanitycheck DEPENDS ${DOTCONFIG})
 
+# Remove the CLI Kconfig symbols from the namespace and
+# CMakeCache.txt. If the symbols end up in DOTCONFIG they will be
+# re-introduced to the namespace through 'import_kconfig'.
+foreach (name ${cache_variable_names})
+  if("${name}" MATCHES "^CONFIG_")
+    unset(${name})
+    unset(${name} CACHE)
+  endif()
+endforeach()
+
 # Parse the lines prefixed with CONFIG_ in the .config file from Kconfig
-import_kconfig(${DOTCONFIG})
+import_kconfig(CONFIG_ ${DOTCONFIG})
+
+# Re-introduce the CLI Kconfig symbols that survived
+foreach (name ${cache_variable_names})
+  if("${name}" MATCHES "^CONFIG_")
+    if(DEFINED ${name})
+      set(${name} ${${name}} CACHE STRING "")
+    endif()
+  endif()
+endforeach()

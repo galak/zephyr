@@ -348,6 +348,20 @@ int bt_le_adv_start(const struct bt_le_adv_param *param,
 		    const struct bt_data *ad, size_t ad_len,
 		    const struct bt_data *sd, size_t sd_len);
 
+/** @brief Update advertising
+ *
+ *  Update advertisement and scan response data.
+ *
+ *  @param ad Data to be used in advertisement packets.
+ *  @param ad_len Number of elements in ad
+ *  @param sd Data to be used in scan response packets.
+ *  @param sd_len Number of elements in sd
+ *
+ *  @return Zero on success or (negative) error code otherwise.
+ */
+int bt_le_adv_update_data(const struct bt_data *ad, size_t ad_len,
+			  const struct bt_data *sd, size_t sd_len);
+
 /** @brief Stop advertising
  *
  *  Stops ongoing advertising.
@@ -439,6 +453,16 @@ int bt_le_scan_start(const struct bt_le_scan_param *param, bt_le_scan_cb_t cb);
  *  of protocol error or negative (POSIX) in case of stack internal error
  */
 int bt_le_scan_stop(void);
+
+
+/** @brief Set (LE) channel map.
+ *
+ * @param chan_map Channel map.
+ *
+ *  @return Zero on success or error code otherwise, positive in case
+ *  of protocol error or negative (POSIX) in case of stack internal error
+ */
+int bt_le_set_chan_map(u8_t chan_map[5]);
 
 /** @brief Helper for parsing advertising (or EIR or OOB) data.
  *
@@ -677,6 +701,22 @@ int bt_br_set_connectable(bool enable);
   * @return 0 on success or negative error value on failure.
   */
 int bt_unpair(u8_t id, const bt_addr_le_t *addr);
+
+/** Information about a bond with a remote device. */
+struct bt_bond_info {
+	/** Address of the remote device. */
+	bt_addr_le_t addr;
+};
+
+/** Iterate through all existing bonds.
+  *
+  * @param id         Local identity (mostly just BT_ID_DEFAULT).
+  * @param func       Function to call for each bond.
+  * @param user_data  Data to pass to the callback function.
+  */
+void bt_foreach_bond(u8_t id, void (*func)(const struct bt_bond_info *info,
+					   void *user_data),
+		     void *user_data);
 
 /**
  * @}

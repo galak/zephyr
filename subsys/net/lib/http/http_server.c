@@ -4,15 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#if defined(CONFIG_NET_DEBUG_HTTP)
-#if defined(CONFIG_HTTPS)
-#define SYS_LOG_DOMAIN "https/server"
-#else
-#define SYS_LOG_DOMAIN "http/server"
-#endif
-#define NET_SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
-#define NET_LOG_ENABLED 1
-#endif
+#include <logging/log.h>
+LOG_MODULE_DECLARE(net_http, CONFIG_HTTP_LOG_LEVEL);
 
 #include <zephyr.h>
 #include <string.h>
@@ -81,7 +74,7 @@ void http_server_conn_monitor(http_server_cb_t cb, void *user_data)
 
 const char * const http_state_str(enum http_state state)
 {
-#if defined(CONFIG_NET_DEBUG_HTTP)
+#if CONFIG_HTTP_LOG_LEVEL >= LOG_LEVEL_DBG
 	switch (state) {
 	case HTTP_STATE_CLOSED:
 		return "CLOSED";
@@ -94,14 +87,14 @@ const char * const http_state_str(enum http_state state)
 	case HTTP_STATE_OPEN:
 		return "OPEN";
 	}
-#else /* CONFIG_NET_DEBUG_HTTP */
+#else
 	ARG_UNUSED(state);
-#endif /* CONFIG_NET_DEBUG_HTTP */
+#endif
 
 	return "";
 }
 
-#if defined(CONFIG_NET_DEBUG_HTTP)
+#if CONFIG_HTTP_LOG_LEVEL >= LOG_LEVEL_DBG
 static void validate_state_transition(struct http_ctx *ctx,
 				      enum http_state current,
 				      enum http_state new)
@@ -127,7 +120,7 @@ static void validate_state_transition(struct http_ctx *ctx,
 			http_state_str(new), new);
 	}
 }
-#endif /* CONFIG_NET_DEBUG_HTTP */
+#endif /* CONFIG_HTTP_LOG_LEVEL */
 
 void _http_change_state(struct http_ctx *ctx,
 			enum http_state new_state,
@@ -145,9 +138,9 @@ void _http_change_state(struct http_ctx *ctx,
 		http_state_str(new_state), new_state,
 		func, line);
 
-#if defined(CONFIG_NET_DEBUG_HTTP)
+#if CONFIG_HTTP_LOG_LEVEL >= LOG_LEVEL_DBG
 	validate_state_transition(ctx, ctx->state, new_state);
-#endif /* CONFIG_NET_DEBUG_HTTP */
+#endif
 
 	ctx->state = new_state;
 }
@@ -217,7 +210,7 @@ quit:
 	return ret;
 }
 
-#if defined(CONFIG_NET_DEBUG_HTTP) && (CONFIG_SYS_LOG_NET_LEVEL > 2)
+#if CONFIG_HTTP_LOG_LEVEL >= LOG_LEVEL_INF
 static char *sprint_ipaddr(char *buf, int buflen, const struct sockaddr *addr)
 {
 	if (addr->sa_family == AF_INET6) {
@@ -300,14 +293,14 @@ static struct net_context *get_server_ctx(struct net_app_ctx *ctx,
 
 	return NULL;
 }
-#endif /* CONFIG_NET_DEBUG_HTTP */
+#endif /* CONFIG_HTTP_LOG_LEVEL */
 
 static inline void new_client(struct http_ctx *ctx,
 			      enum http_connection_type type,
 			      struct net_app_ctx *app_ctx,
 			      const struct sockaddr *dst)
 {
-#if defined(CONFIG_NET_DEBUG_HTTP) && (CONFIG_SYS_LOG_NET_LEVEL > 2)
+#if CONFIG_HTTP_LOG_LEVEL >= LOG_LEVEL_INF
 #if defined(CONFIG_NET_IPV6)
 #define PORT_LEN sizeof("[]:xxxxx")
 #define ADDR_LEN NET_IPV6_ADDR_LEN
@@ -331,7 +324,7 @@ static inline void new_client(struct http_ctx *ctx,
 	} else {
 		NET_INFO("[%p] %s connection", ctx, type_str);
 	}
-#endif /* CONFIG_NET_DEBUG_HTTP */
+#endif /* CONFIG_HTTP_LOG_LEVEL */
 }
 
 static void url_connected(struct http_ctx *ctx,
@@ -464,7 +457,7 @@ struct http_root_url *http_url_find(struct http_ctx *ctx,
 	u8_t i;
 	int ret;
 
-	for (i = 0; i < CONFIG_HTTP_SERVER_NUM_URLS; i++) {
+	for (i = 0U; i < CONFIG_HTTP_SERVER_NUM_URLS; i++) {
 		if (!ctx->http.urls) {
 			continue;
 		}
@@ -563,7 +556,7 @@ static void http_received(struct net_app_ctx *app_ctx,
 {
 	struct http_ctx *ctx = user_data;
 	size_t start = ctx->http.data_len;
-	u16_t len = 0;
+	u16_t len = 0U;
 	const struct sockaddr *dst = NULL;
 	struct net_buf *frag;
 	int parsed_len;
@@ -639,7 +632,7 @@ static void http_received(struct net_app_ctx *app_ctx,
 			}
 
 			ctx->http.data_len = 0;
-			len = 0;
+			len = 0U;
 			start = 0;
 		}
 
@@ -687,7 +680,7 @@ quit:
 ws_only:
 	if (ctx->cb.recv) {
 #if defined(CONFIG_WEBSOCKET)
-		u32_t msg_len, header_len = 0;
+		u32_t msg_len, header_len = 0U;
 		bool masked = true;
 		int ret;
 
@@ -996,7 +989,7 @@ static inline void new_server(struct http_ctx *ctx,
 			      const char *server_banner,
 			      const struct sockaddr *addr)
 {
-#if defined(CONFIG_NET_DEBUG_HTTP) && (CONFIG_SYS_LOG_NET_LEVEL > 2)
+#if CONFIG_HTTP_LOG_LEVEL >= LOG_LEVEL_INF
 #if defined(CONFIG_NET_IPV6)
 #define PORT_STR sizeof("[]:xxxxx")
 	char buf[NET_IPV6_ADDR_LEN + PORT_STR];
@@ -1011,7 +1004,7 @@ static inline void new_server(struct http_ctx *ctx,
 	} else {
 		NET_INFO("%s (%p)", server_banner, ctx);
 	}
-#endif /* CONFIG_NET_DEBUG_HTTP */
+#endif /* CONFIG_HTTP_LOG_LEVEL */
 }
 
 static void init_net(struct http_ctx *ctx,

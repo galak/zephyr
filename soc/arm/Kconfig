@@ -1,0 +1,38 @@
+config CPU_HAS_ARM_MPU
+	bool
+	# Omit prompt to signify "hidden" option
+	select CPU_HAS_MPU
+	help
+	  This option is enabled when the CPU has a Memory Protection Unit (MPU)
+	  in ARM flavor.
+
+config CPU_HAS_NXP_MPU
+	bool
+	# Omit prompt to signify "hidden" option
+	select CPU_HAS_MPU
+	help
+	  This option is enabled when the CPU has a Memory Protection Unit (MPU)
+	  in NXP flavor.
+
+config CPU_HAS_ARM_SAU
+	bool
+	# Omit prompt to signify "hidden" option
+	select CPU_HAS_TEE
+	help
+	  MCU implements the ARM Security Attribution Unit (SAU).
+
+config CPU_HAS_NRF_IDAU
+	bool
+	# Omit prompt to signify "hidden" option
+	depends on SOC_SERIES_NRF91X
+	select CPU_HAS_TEE
+	help
+	  MCU implements the nRF (vendor-specific) Security Attribution Unit.
+	  (IDAU: "Implementation-Defined Attribution Unit", in accordance with
+	  ARM terminology).
+
+config HAS_SWO
+	bool
+	# Omit prompt to signify "hidden" option
+	help
+	  When enabled, indicates that SoC has an SWO output

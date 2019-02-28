@@ -6,6 +6,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <logging/log.h>
+LOG_MODULE_REGISTER(net_test, CONFIG_NET_IPV6_LOG_LEVEL);
+
 #include <zephyr/types.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -20,6 +23,7 @@
 #include <net/net_ip.h>
 #include <net/net_core.h>
 #include <net/ethernet.h>
+#include <net/dummy.h>
 #include <net/net_mgmt.h>
 #include <net/net_event.h>
 
@@ -29,7 +33,7 @@
 #define NET_LOG_ENABLED 1
 #include "net_private.h"
 
-#if defined(CONFIG_NET_IPV6)
+#if defined(CONFIG_NET_IPV6_LOG_LEVEL_DBG)
 #define DBG(fmt, ...) printk(fmt, ##__VA_ARGS__)
 #else
 #define DBG(fmt, ...)
@@ -94,7 +98,7 @@ static void net_test_iface_init(struct net_if *iface)
 
 #define NET_ICMP_HDR(pkt) ((struct net_icmp_hdr *)net_pkt_icmp_data(pkt))
 
-static int tester_send(struct net_if *iface, struct net_pkt *pkt)
+static int tester_send(struct device *dev, struct net_pkt *pkt)
 {
 	struct net_icmp_hdr *icmp = NET_ICMP_HDR(pkt);
 
@@ -114,15 +118,13 @@ static int tester_send(struct net_if *iface, struct net_pkt *pkt)
 		k_sem_give(&wait_data);
 	}
 
-	net_pkt_unref(pkt);
-
 	return 0;
 }
 
 struct net_test_mld net_test_data;
 
-static struct net_if_api net_test_if_api = {
-	.init = net_test_iface_init,
+static struct dummy_api net_test_if_api = {
+	.iface_api.init = net_test_iface_init,
 	.send = tester_send,
 };
 
@@ -313,8 +315,7 @@ static void send_query(struct net_if *iface)
 	/* Sent to all MLDv2-capable routers */
 	net_ipv6_addr_create(&dst, 0xff02, 0, 0, 0, 0, 0, 0, 0x0016);
 
-	pkt = net_pkt_get_reserve_tx(net_if_get_ll_reserve(iface, &dst),
-				     K_FOREVER);
+	pkt = net_pkt_get_reserve_tx(K_FOREVER);
 
 	pkt = net_ipv6_create(pkt,
 			      &peer_addr,
@@ -356,9 +357,11 @@ static void send_query(struct net_if *iface)
 
 	net_pkt_set_iface(pkt, iface);
 
+	net_pkt_set_ipv6_ext_len(pkt, ROUTER_ALERT_LEN);
+
 	net_pkt_write_be16(pkt, pkt->frags,
 			   NET_IPV6H_LEN + ROUTER_ALERT_LEN + 2,
-			   &pos, ntohs(~net_calc_chksum_icmpv6(pkt)));
+			   &pos, ntohs(net_calc_chksum_icmpv6(pkt)));
 
 	net_recv_data(iface, pkt);
 }

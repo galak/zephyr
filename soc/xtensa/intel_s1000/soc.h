@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Intel Corporation
+ * Copyright (c) 2019 Intel Corporation
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -32,16 +32,11 @@
 #define IOAPIC_HIGH				0
 
 /* DW interrupt controller */
-#define DW_ICTL_IRQ_CAVS_OFFSET			CAVS_IRQ_NUMBER(DW_ICTL_IRQ)
+#define DW_ICTL_IRQ_CAVS_OFFSET			CAVS_IRQ_NUMBER(DT_DW_ICTL_IRQ)
 #define DW_ICTL_NUM_IRQS			9
 
 /* GPIO */
-#define GPIO_DW_0_BASE_ADDR			0x00080C00
-#define GPIO_DW_0_BITS				32
 #define GPIO_DW_PORT_0_INT_MASK			0
-#define GPIO_DW_0_IRQ_FLAGS			0
-#define GPIO_DW_0_IRQ				0x00040706
-#define GPIO_DW_0_IRQ_ICTL_OFFSET		INTR_CNTL_IRQ_NUM(GPIO_DW_0_IRQ)
 
 /* low power DMACs */
 #define LP_GP_DMA_SIZE				0x00001000
@@ -62,6 +57,8 @@
 #define CAVS_DMA1_OWNERSHIP_REG			(0x00071A62)
 #define CAVS_DMA2_OWNERSHIP_REG			(0x00071A64)
 
+#define DMA_HANDSHAKE_DMIC_RXA			0
+#define DMA_HANDSHAKE_DMIC_RXB			1
 #define DMA_HANDSHAKE_SSP0_TX			2
 #define DMA_HANDSHAKE_SSP0_RX			3
 #define DMA_HANDSHAKE_SSP1_TX			4
@@ -70,6 +67,14 @@
 #define DMA_HANDSHAKE_SSP2_RX			7
 #define DMA_HANDSHAKE_SSP3_TX			8
 #define DMA_HANDSHAKE_SSP3_RX			9
+
+/* DMA Channel Allocation
+ * FIXME: I2S Driver assigns channel in Kconfig.
+ * Perhaps DTS is a better option
+ */
+#define DMIC_DMA_DEV_NAME			CONFIG_DMA_0_NAME
+#define DMA_CHANNEL_DMIC_RXA			0
+#define DMA_CHANNEL_DMIC_RXB			1
 
 /* I2S */
 #define I2S0_CAVS_IRQ				0x00000010
@@ -112,6 +117,16 @@ struct soc_resource_alloc_regs {
 	u32_t	geno;
 };
 
+/* DMIC SHIM Registers */
+#define SOC_DMIC_SHIM_REG_BASE			0x00071E80
+#define SOC_DMIC_SHIM_DMICLCTL_SPA		BIT(0)
+#define SOC_DMIC_SHIM_DMICLCTL_CPA		BIT(8)
+
+struct soc_dmic_shim_regs {
+	u32_t	dmiclcap;
+	u32_t	dmiclctl;
+};
+
 /* SOC DSP SHIM Registers */
 #define SOC_DSP_SHIM_REG_BASE			0x00071F00
 /* SOC DSP SHIM Register - Clock Control */
@@ -146,11 +161,21 @@ struct soc_dsp_shim_regs {
 /* Global Control registers */
 #define SOC_S1000_GLB_CTRL_BASE			(0x00081C00)
 
-#define SOC_S1000_GLB_CTRL_STRAPS		(SOC_S1000_GLB_CTRL_BASE + 0x40)
+#define SOC_GNA_POWER_CONTROL_SPA		(BIT(0))
+#define SOC_GNA_POWER_CONTROL_CPA		(BIT(8))
+#define SOC_GNA_POWER_CONTROL_CLK_EN		(BIT(16))
+
 #define SOC_S1000_STRAP_REF_CLK			(BIT_MASK(2) << 3)
 #define SOC_S1000_STRAP_REF_CLK_38P4		(0 << 3)
 #define SOC_S1000_STRAP_REF_CLK_19P2		(1 << 3)
 #define SOC_S1000_STRAP_REF_CLK_24P576		(2 << 3)
+
+struct soc_global_regs {
+	u32_t	reserved1[8];
+	u32_t	gna_power_control;
+	u32_t	reserved2[7];
+	u32_t	straps;
+};
 
 extern void _soc_irq_enable(u32_t irq);
 extern void _soc_irq_disable(u32_t irq);
