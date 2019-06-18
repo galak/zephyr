@@ -40,11 +40,12 @@
 		#interrupt-cells = <3>;
 	};
 
-	soc {
+	pci {
 		#address-cells = <1>;
 		#size-cells = <1>;
-		compatible = "simple-bus";
-		ranges;
+		compatible = "intel,apollo-lake-pci", "pci";
+		device_type = "pci";
+		bus-range = <0 0>;
 
 		uart0: uart@0 {
 			compatible = "ns16550";
@@ -216,6 +217,14 @@
 
 			status = "okay";
 		};
+	};
+
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
 
 		gpio: gpio@d0c50000 {
 			compatible = "intel,apl-gpio";
