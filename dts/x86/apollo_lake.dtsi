@@ -9,6 +9,8 @@
 #include <dt-bindings/i2c/i2c.h>
 #include <dt-bindings/pcie/pcie.h>
 
+#define DT_PCIE_BDF(bus, dev, func) ((bus<<16)|(dev<<11)|(func<<8)) 0x0 0x0 0x0 0x0
+
 / {
 	cpus {
 		#address-cells = <1>;
@@ -41,8 +43,8 @@
 	};
 
 	pci {
-		#address-cells = <1>;
-		#size-cells = <1>;
+		#address-cells = <3>;
+		#size-cells = <2>;
 		compatible = "intel,apollo-lake-pci", "pci";
 		device_type = "pci";
 		bus-range = <0 0>;
@@ -51,7 +53,7 @@
 			compatible = "ns16550";
 
 			pcie;
-			reg = <PCIE_BDF(0,0x18,0) PCIE_ID(0x8086,0x5abc)>;
+			reg = <DT_PCIE_BDF(0,0x18,0)>;
 
 			label = "UART_0";
 			clock-frequency = <1843200>;
@@ -65,7 +67,7 @@
 			compatible = "ns16550";
 
 			pcie;
-			reg = <PCIE_BDF(0,0x18,1) PCIE_ID(0x8086,0x5abe)>;
+			reg = <DT_PCIE_BDF(0,0x18,1)>;
 
 			label = "UART_1";
 			clock-frequency = <1843200>;
@@ -80,7 +82,7 @@
 			compatible = "ns16550";
 
 			pcie;
-			reg = <PCIE_BDF(0,0x18,2) PCIE_ID(0x8086,0x5ac0)>;
+			reg = <DT_PCIE_BDF(0,0x18,2)>;
 
 			label = "UART_2";
 			clock-frequency = <1843200>;
@@ -95,7 +97,7 @@
 			compatible = "ns16550";
 
 			pcie;
-			reg = <PCIE_BDF(0,0x18,3) PCIE_ID(0x8086,0x5aee)>;
+			reg = <DT_PCIE_BDF(0,0x18,3)>;
 
 			label = "UART_3";
 			clock-frequency = <1843200>;
@@ -112,7 +114,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			pcie;
-			reg = <PCIE_BDF(0,0x16,0) PCIE_ID(0x8086,0x5aac)>;
+			reg = <DT_PCIE_BDF(0,0x16,0)>;
 			interrupts = <PCIE_IRQ_DETECT IRQ_TYPE_LEVEL_LOW 3>;
 			interrupt-parent = <&intc>;
 			label = "I2C_0";
@@ -126,7 +128,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			pcie;
-			reg = <PCIE_BDF(0,0x16,1) PCIE_ID(0x8086,0x5aae)>;
+			reg = <DT_PCIE_BDF(0,0x16,1)>;
 			interrupts = <PCIE_IRQ_DETECT IRQ_TYPE_LEVEL_LOW 3>;
 			interrupt-parent = <&intc>;
 			label = "I2C_1";
@@ -140,7 +142,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			pcie;
-			reg = <PCIE_BDF(0,0x16,2) PCIE_ID(0x8086,0x5ab0)>;
+			reg = <DT_PCIE_BDF(0,0x16,2)>;
 			interrupts = <PCIE_IRQ_DETECT IRQ_TYPE_LEVEL_LOW 3>;
 			interrupt-parent = <&intc>;
 			label = "I2C_2";
@@ -154,7 +156,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			pcie;
-			reg = <PCIE_BDF(0,0x16,3) PCIE_ID(0x8086,0x5ab2)>;
+			reg = <DT_PCIE_BDF(0,0x16,3)>;
 			interrupts = <PCIE_IRQ_DETECT IRQ_TYPE_LEVEL_LOW 3>;
 			interrupt-parent = <&intc>;
 			label = "I2C_3";
@@ -168,7 +170,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			pcie;
-			reg = <PCIE_BDF(0,0x17,0) PCIE_ID(0x8086,0x5ab4)>;
+			reg = <DT_PCIE_BDF(0,0x17,0)>;
 			interrupts = <PCIE_IRQ_DETECT IRQ_TYPE_LEVEL_LOW 3>;
 			interrupt-parent = <&intc>;
 			label = "I2C_4";
@@ -182,7 +184,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			pcie;
-			reg = <PCIE_BDF(0,0x17,1) PCIE_ID(0x8086,0x5ab6)>;
+			reg = <DT_PCIE_BDF(0,0x17,1)>;
 			interrupts = <PCIE_IRQ_DETECT IRQ_TYPE_LEVEL_LOW 3>;
 			interrupt-parent = <&intc>;
 			label = "I2C_5";
@@ -196,7 +198,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			pcie;
-			reg = <PCIE_BDF(0,0x17,2) PCIE_ID(0x8086,0x5ab8)>;
+			reg = <DT_PCIE_BDF(0,0x17,2)>;
 			interrupts = <PCIE_IRQ_DETECT IRQ_TYPE_LEVEL_LOW 3>;
 			interrupt-parent = <&intc>;
 			label = "I2C_6";
@@ -210,7 +212,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			pcie;
-			reg = <PCIE_BDF(0,0x17,3) PCIE_ID(0x8086,0x5aba)>;
+			reg = <DT_PCIE_BDF(0,0x17,3)>;
 			interrupts = <PCIE_IRQ_DETECT IRQ_TYPE_LEVEL_LOW 3>;
 			interrupt-parent = <&intc>;
 			label = "I2C_7";
@@ -218,7 +220,6 @@
 			status = "okay";
 		};
 	};
-
 
 	soc {
 		#address-cells = <1>;
