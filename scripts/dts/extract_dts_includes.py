@@ -302,6 +302,8 @@ def write_header(f):
                 deprecated_warn = False
                 if prop in deprecated_main:
                     deprecated_warn = True
+                if not prop.startswith('DT_'):
+                    deprecated_warn = True
                 f.write(define_str(prop, defs[node][prop], value_tabs, deprecated_warn))
 
         for alias in sorted(defs[node]['aliases']):
@@ -309,7 +311,7 @@ def write_header(f):
             deprecated_warn = False
             # Mark any non-DT_ prefixed define as deprecated except
             # for now we special case LED, SW, and *PWM_LED*
-            if not alias.startswith(('DT_', 'LED', 'SW')) and not 'PWM_LED' in alias:
+            if not alias.startswith('DT_'):
                 deprecated_warn = True
             if alias in deprecated:
                 deprecated_warn = True
