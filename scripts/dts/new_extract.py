@@ -88,11 +88,15 @@ def main():
     if edt.flash_dev:
         write_flash(edt.flash_dev)
 
+    flash_area = 0
     for dev in edt.devices:
         # TODO: Feels a bit janky to handle this separately from
         # zephyr,flash-dev
         if dev.name.startswith("partition@"):
-            write_flash_partition(dev)
+            write_flash_partition(dev, flash_area)
+            write_flash_area_index(dev, flash_area)
+            flash_area += 1
+    out("FLASH_AREA_NUM", flash_area)
 
 
 def write_regs(dev):
@@ -286,14 +290,58 @@ def write_flash(flash_dev):
     if reg.size is not None:
         out("FLASH_SIZE", reg.size//1024)
 
+def controller_path(partition_dev):
+    # Returns the DT path to the flash controller for the
+    # partition at 'partition_path'.
+    #
+    # For now assume node_path is something like
+    # /flash-controller@4001E000/flash@0/partitions/partition@fc000. First, we
+    # go up two levels to get the flash and check its compat.
+    #
+    # The flash controller might be the flash itself (for cases like NOR
+    # flashes). For the case of 'soc-nv-flash', we assume its the parent of the
+    # flash node.
 
-def write_flash_partition(partition_dev):
+    flash_ctrl_dev = partition_dev.parent.parent
+
+    if flash_ctrl_dev.matching_compat == "soc-nv-flash":
+        return partition_dev.parent.parent.parent
+
+    return flash_ctrl_dev
+
+def write_flash_area_index(partition_dev, idx):
     if partition_dev.label is None:
         err("missing 'label' property on {!r}".format(partition_dev))
 
     label = str2ident(partition_dev.label)
 
-    out("FLASH_AREA_{}_LABEL".format(label), label)
+    out("FLASH_AREA_{}_LABEL".format(idx), label)
+
+    for i, reg in enumerate(partition_dev.regs):
+        out("FLASH_AREA_{}_OFFSET_{}".format(idx, i), reg.addr)
+        out("FLASH_AREA_{}_SIZE_{}".format(idx, i), reg.size)
+
+    # Add aliases that points to the first sector
+    #
+    # TODO: Could we get rid of this? Code could just refer to sector _0 where
+    # needed instead.
+
+    out_alias("FLASH_AREA_{}_OFFSET".format(idx),
+              "FLASH_AREA_{}_OFFSET_0".format(idx))
+    out_alias("FLASH_AREA_{}_SIZE".format(idx),
+              "FLASH_AREA_{}_SIZE_0".format(idx))
+
+    ctrl = controller_path(partition_dev)
+    out("FLASH_AREA_{}_DEV".format(idx), '"{}"'.format(ctrl.label))
+
+def write_flash_partition(partition_dev, idx):
+    if partition_dev.label is None:
+        err("missing 'label' property on {!r}".format(partition_dev))
+
+    label = str2ident(partition_dev.label)
+
+    out("FLASH_AREA_{}_LABEL".format(label), '"{}"'.format(partition_dev.label))
+    out("FLASH_AREA_{}_ID".format(label), idx)
     out("FLASH_AREA_{}_READ_ONLY".format(label),
             1 if partition_dev.read_only else 0)
 
