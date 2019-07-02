@@ -91,6 +91,14 @@ def main():
         out("FLASH_BASE_ADDRESS", 0)
         out("FLASH_SIZE", 0)
 
+    foo = edt._chosen_dev('zephyr,code-partition')
+    if foo:
+        out("CODE_PARTITION_OFFSET", foo.regs[0].addr)
+        out("CODE_PARTITION_SIZE", foo.regs[0].size)
+    else:
+        out("CODE_PARTITION_OFFSET", 0)
+        out("CODE_PARTITION_SIZE", 0)
+
     flash_area = 0
     for dev in edt.devices:
         # TODO: Feels a bit janky to handle this separately from
