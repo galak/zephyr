@@ -63,6 +63,9 @@ class EDT:
 
         self._create_compat2bindings(bindings_dir)
         self._create_devices()
+        self.chosen = None
+        if self._dt.has_node("/chosen"):
+            self.chosen = self._dt.get_node("/chosen")
         self._parse_chosen()
 
     def get_dev(self, path):
@@ -198,14 +201,12 @@ class EDT:
         # _parse_chosen() helper. Returns the device pointed to by prop_name in
         # /chosen, or None if /chosen has no property named prop_name.
 
-        if not self._dt.has_node("/chosen"):
+        if not self.chosen:
             return None
 
-        chosen = self._dt.get_node("/chosen")
-
-        if prop_name in chosen.props:
+        if prop_name in self.chosen.props:
             # Value is the path of a node that represents the memory device
-            path = chosen.props[prop_name].to_string()
+            path = self.chosen.props[prop_name].to_string()
             if not self._dt.has_node(path):
                 _err("{} points to {}, which does not exist"
                      .format(prop_name, path))
