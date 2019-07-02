@@ -87,6 +87,9 @@ def main():
 
     if edt.flash_dev:
         write_flash(edt.flash_dev)
+    else:
+        out("FLASH_BASE_ADDRESS", 0)
+        out("FLASH_SIZE", 0)
 
     flash_area = 0
     for dev in edt.devices:
@@ -286,9 +289,21 @@ def write_flash(flash_dev):
 
     reg = flash_dev.regs[0]
 
+    # Handle QSPI flash case
+    if flash_dev.bus == "spi":
+        if len(flash_dev.parent.regs) == 2:
+            reg = flash_dev.parent.regs[1]
+
     out("FLASH_BASE_ADDRESS", hex(reg.addr))
     if reg.size is not None:
         out("FLASH_SIZE", reg.size//1024)
+
+    erase_prop = flash_dev.props.get('erase-block-size')
+    if erase_prop:
+        out("FLASH_ERASE_BLOCK_SIZE", erase_prop.val)
+    write_prop = flash_dev.props.get('write-block-size')
+    if write_prop:
+        out("FLASH_WRITE_BLOCK_SIZE", write_prop.val)
 
 def controller_path(partition_dev):
     # Returns the DT path to the flash controller for the
