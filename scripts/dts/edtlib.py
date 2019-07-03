@@ -177,6 +177,7 @@ class EDT:
             dev._create_interrupts()
             dev._create_gpios()
             dev._create_pwms()
+            dev._create_clocks()
 
         # TODO: Remove this sorting later? It's there to make it easy to
         # compare output against extract_dts_include.py.
@@ -267,6 +268,9 @@ class Device:
       TODO
 
     pwms:
+      TODO
+
+    clocks:
       TODO
 
     bus:
@@ -541,6 +545,39 @@ class Device:
 
                 self.gpios[prefix] = gpio_res
 
+    def _create_clocks(self):
+        # Initializes self.clocks
+
+        node = self._node
+
+        self.clocks = []
+
+        for controller_node, spec in _clocks(node):
+            controller = self.edt._node2dev[controller_node]
+
+            clock = Clock()
+            clock.dev = self
+            clock.controller = controller
+            clock.specifier = self._named_cells(controller, spec, "clocks")
+
+            self.clocks.append(clock)
+
+        # TOOD: verify clock name support
+        if "clock-names" in node.props:
+            clock_names = node.props["clock-names"].to_strings()
+            if len(clock_names) != len(self.clocks):
+                _err("'clock-names' property in {} has {} strings, but "
+                     "there are {} clocks"
+                     .format(node.name, len(clock_names),
+                             len(self.clocks)))
+
+            for clock, name in zip(self.clocks, clock_names):
+                clock.name = name
+        else:
+            for clock in self.clocks:
+                clock.name = None
+
+
     def _create_pwms(self):
         # Initializes self.pwms
 
@@ -711,6 +748,39 @@ class GPIO:
         fields.append("cells: {}".format(self.cells))
 
         return "<GPIOs, {}>".format(", ".join(fields))
+
+
+class Clock:
+    """
+    Represents a clock used by a device.
+
+    These attributes are available on clock instances:
+
+    dev:
+      The Device instance that uses the clock
+
+    name:
+      The name of the clock as given in the 'clock-names' property, or
+      None if there is no 'clock-names' property
+
+    controller:
+      The Device instance for the controller of the clock.
+
+    specifier:
+      A dictionary that maps names from the #cells portion of the binding to
+      cell values in the pwm specifier. 'pwms = <&pwm 0 5000000>' might give
+      {"channel": 0, "period": 5000000}, for example.
+    """
+    def __repr__(self):
+        fields = []
+
+        if self.name is not None:
+            fields.append("name: " + self.name)
+
+        fields.append("target: {}".format(self.controller))
+        fields.append("cells: {}".format(self.cells))
+
+        return "<clocks, {}>".format(", ".join(fields))
 
 
 class PWM:
@@ -1096,6 +1166,36 @@ def _map_interrupt(child, parent, child_spec):
     return (parent, raw_spec[4*own_address_cells(parent):])
 
 
+def _clocks(node):
+    # TODO: document
+
+    res = []
+
+    prop = node.props.get("clocks")
+    if prop is not None:
+        raw = prop.value
+
+        while raw:
+            if len(raw) < 4:
+                # Not enough room for phandle
+                _err("bad value for " + repr(prop))
+            phandle = to_num(raw[:4])
+            raw = raw[4:]
+
+            controller = prop.node.dt.phandle2node.get(phandle)
+            if not controller:
+                _err("bad phandle in " + repr(prop))
+
+            clock_cells = _clock_cells(controller)
+            if len(raw) < 4*clock_cells:
+                _err("missing data after phandle in " + repr(prop))
+
+            res.append((controller, raw[:4*clock_cells]))
+            raw = raw[4*clock_cells:]
+
+    return res
+
+
 def _pwms(node):
     # TODO: document
 
@@ -1337,6 +1437,14 @@ def _pwm_cells(node):
     if "#pwm-cells" not in node.props:
         _err("{!r} lacks #pwm-cells".format(node))
     return node.props["#pwm-cells"].to_num()
+
+
+def _clock_cells(node):
+    # TODO: have a _required_prop(node, "blah") or similar?
+
+    if "#clock-cells" not in node.props:
+        _err("{!r} lacks #clock-cells".format(node))
+    return node.props["#clock-cells"].to_num()
 
 
 def _size_cells(node):
