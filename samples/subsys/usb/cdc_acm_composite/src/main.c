@@ -128,7 +128,7 @@ void main(void)
 		return;
 	}
 
-	LOG_DBG("Wait for DTR");
+	printk("Wait for DTR");
 
 	while (1) {
 		uart_line_ctrl_get(dev0, LINE_CTRL_DTR, &dtr);
@@ -148,7 +148,7 @@ void main(void)
 		k_sleep(100);
 	}
 
-	LOG_DBG("DTR set, start test");
+	printk("DTR set, start test");
 
 	uart_line_set(dev0);
 	uart_line_set(dev1);

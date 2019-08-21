@@ -83,7 +83,7 @@ void main(void)
 
 	ring_buf_init(&ringbuf, sizeof(ring_buffer), ring_buffer);
 
-	LOG_DBG("Wait for DTR");
+	printk("Wait for DTR");
 
 	while (true) {
 		uart_line_ctrl_get(dev, LINE_CTRL_DTR, &dtr);
@@ -92,7 +92,7 @@ void main(void)
 		}
 	}
 
-	LOG_DBG("DTR set");
+	printk("DTR set");
 
 	/* They are optional, we use them to test the interrupt endpoint */
 	ret = uart_line_ctrl_set(dev, LINE_CTRL_DCD, 1);
