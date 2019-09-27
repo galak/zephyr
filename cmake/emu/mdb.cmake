@@ -9,6 +9,14 @@ if(${CONFIG_SOC_NSIM_HS_SMP})
  set(MDB_ARGS mdb_hs_smp.args)
 endif()
 
+set(RUN_CMD
+  ${MDB} -pset=1 -psetname=core0 -prop=ident=0x00000050 -cmpd=soc
+  @${BOARD_DIR}/support/${MDB_ARGS} ${APPLICATION_BINARY_DIR}/zephyr/${KERNEL_ELF_NAME} &&
+  ${MDB} -pset=2 -psetname=core1 -prop=ident=0x00000150 -cmpd=soc
+  @${BOARD_DIR}/support/${MDB_ARGS} ${APPLICATION_BINARY_DIR}/zephyr/${KERNEL_ELF_NAME} &&
+  NSIM_MULTICORE=1 ${MDB} -multifiles=core0,core1 -cmpd=soc -run -cl
+)
+
 add_custom_target(run
   COMMAND
   ${MDB} -pset=1 -psetname=core0 -prop=ident=0x00000050 -cmpd=soc

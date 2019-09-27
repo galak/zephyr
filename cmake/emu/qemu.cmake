@@ -294,3 +294,15 @@ foreach(target ${qemu_targets})
     add_dependencies(${target} qemu_kernel_target)
   endif()
 endforeach()
+
+list(REMOVE_AT PRE_QEMU_COMMANDS 0)
+list(TRANSFORM PRE_QEMU_COMMANDS REPLACE "COMMAND" "\n")
+message ("GA:${PRE_QEMU_COMMANDS}")
+string(REPLACE ";" " " PRE_QEMU_COMMANDS "${PRE_QEMU_COMMANDS}")
+string(STRIP ${PRE_QEMU_COMMANDS} PRE_QEMU_COMMANDS)
+
+string(REPLACE ";" " " QEMU_CMD "
+  ${QEMU} ${QEMU_FLAGS_${ARCH}} ${QEMU_FLAGS} ${QEMU_EXTRA_FLAGS} \
+  ${QEMU_SMP_FLAGS} ${QEMU_KERNEL_OPTION}")
+string(STRIP ${QEMU_CMD} QEMU_CMD)
+file(GENERATE OUTPUT run.sh CONTENT "${PRE_QEMU_COMMANDS}\n${QEMU_CMD}")
