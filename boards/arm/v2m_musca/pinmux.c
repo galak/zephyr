@@ -51,10 +51,10 @@ static void arm_musca_pinmux_defaults(void)
 	scc[IOMUX_MAIN_OENSEL] &= ~(BIT(0) | BIT(1));
 #endif
 	/* Enable PINs for LEDS */
-	scc[IOMUX_ALTF1_OUTSEL] &= ~(BIT(2) | BIT(3) | BIT(4));
-	scc[IOMUX_ALTF1_OENSEL] &= ~(BIT(2) | BIT(3) | BIT(4));
-	scc[IOMUX_ALTF2_OUTSEL] &= ~(BIT(2) | BIT(3) | BIT(4));
-	scc[IOMUX_ALTF2_OENSEL] &= ~(BIT(2) | BIT(3) | BIT(4));
+	scc[IOMUX_ALTF1_OUTSEL] &= ~(BIT(2) | BIT(3) | BIT(4) | BIT(14) | BIT(15));
+	scc[IOMUX_ALTF1_OENSEL] &= ~(BIT(2) | BIT(3) | BIT(4) | BIT(14) | BIT(15));
+	scc[IOMUX_ALTF2_OUTSEL] &= ~(BIT(2) | BIT(3) | BIT(4) | BIT(14) | BIT(15));
+	scc[IOMUX_ALTF2_OENSEL] &= ~(BIT(2) | BIT(3) | BIT(4) | BIT(14) | BIT(15));
 }
 #endif
 
