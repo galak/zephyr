@@ -91,15 +91,15 @@ static int cmsdk_ahb_gpio_config(struct device *dev, u32_t mask, int flags)
 {
 	const struct gpio_cmsdk_ahb_cfg * const cfg = dev->config->config_info;
 
-	if ((flags & GPIO_DIR_MASK) == 0) {
+	if (((flags & GPIO_INPUT) == 0) && ((flags & GPIO_OUTPUT) == 0)) {
 		return -ENOTSUP;
 	}
 
-	if ((flags & GPIO_PULL_UP) == GPIO_PULL_UP) {
+	if ((flags & GPIO_PULL_UP) != 0) {
 		return -ENOTSUP;
 	}
 
-	if ((flags & GPIO_PULL_DOWN) == GPIO_PULL_DOWN) {
+	if ((flags & GPIO_PULL_DOWN) != 0) {
 		return -ENOTSUP;
 	}
 
@@ -109,13 +109,13 @@ static int cmsdk_ahb_gpio_config(struct device *dev, u32_t mask, int flags)
 	 * 0 - Input
 	 * 1 - Output
 	 */
-	if ((flags & GPIO_DIR_MASK) == GPIO_DIR_OUT) {
-		cfg->port->outenableset = mask;
+	if (flags & GPIO_OUTPUT) {
 		if ((flags & GPIO_OUTPUT_INIT_HIGH) != 0) {
 			gpio_cmsdk_ahb_port_set_bits_raw(dev, mask);
 		} else if ((flags & GPIO_OUTPUT_INIT_LOW) != 0) {
 			gpio_cmsdk_ahb_port_clear_bits_raw(dev, mask);
 		}
+		cfg->port->outenableset = mask;
 	} else {
 		cfg->port->outenableclr = mask;
 	}
@@ -299,6 +299,7 @@ static int gpio_cmsdk_ahb_pin_interrupt_configure(struct device *dev,
 		} else {
 			cfg->port->intpolclr = BIT(pin);
 		}
+		cfg->port->intclear = BIT(pin);
 		cfg->port->intenset = BIT(pin);
 	}
 
