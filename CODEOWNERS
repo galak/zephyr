@@ -83,6 +83,7 @@
 /boards/arm/stm32*_disco/                 @erwango
 /boards/arm/stm32f3_disco/                @ydamigos
 /boards/arm/stm32*_eval/                  @erwango
+/boards/common/                           @mbolivar
 /boards/nios2/                            @wentongwu
 /boards/nios2/altera_max10/               @wentongwu
 /boards/arm/stm32_min_dev/                @cbsiddharth
@@ -160,6 +161,7 @@
 /drivers/serial/uart_xlnx_ps.c            @wjliang
 /drivers/net/                             @jukkar @tbursztyka
 /drivers/ptp_clock/                       @jukkar
+/drivers/pwm/pwm_shell.c                  @henrikbrixandersen
 /drivers/spi/                             @tbursztyka
 /drivers/spi/spi_ll_stm32.*               @superna9999
 /drivers/spi/spi_rv32m1_lpspi*            @karstenkoenig
@@ -338,6 +340,7 @@
 /subsys/bluetooth/mesh/                   @jhedberg @trond-snekvik @joerchan @Vudentz
 /subsys/cpp/                              @pabigot @vanwinkeljan
 /subsys/debug/                            @nashif
+/subsys/debug/asan.c                      @vanwinkeljan @aescolar
 /subsys/disk/disk_access_spi_sdhc.c       @JunYangNXP
 /subsys/disk/disk_access_sdhc.h           @JunYangNXP
 /subsys/disk/disk_access_usdhc.c          @JunYangNXP
@@ -363,6 +366,7 @@
 /subsys/net/l2/                           @jukkar @tbursztyka
 /subsys/net/l2/canbus/                    @alexanderwachter @jukkar
 /subsys/power/                            @wentongwu @pizi-nordic
+/subsys/random/                           @dleach02
 /subsys/settings/                         @nvlsianpu
 /subsys/shell/                            @jakub-uC @nordic-krch
 /subsys/storage/                          @nvlsianpu
