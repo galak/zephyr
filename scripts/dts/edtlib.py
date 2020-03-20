@@ -295,15 +295,11 @@ class EDT:
 
         self._binding_paths = _binding_paths(bindings_dirs)
 
+        reg_cnt = {'spi': 0, 'i2c': 0, 'i2s': 0, 'qspi': 0, 'ht16k33':0, 'lmp90xxx':0, 'uart':0 }
         self._compat2binding = {}
         for binding_path in self._binding_paths:
             with open(binding_path, encoding="utf-8") as f:
                 contents = f.read()
-
-            # As an optimization, skip parsing files that don't contain any of
-            # the .dts 'compatible' strings, which should be reasonably safe
-            if not dt_compats_search(contents):
-                continue
 
             # Load the binding and check that it actually matches one of the
             # compatibles. Might get false positives above due to comments and
@@ -319,33 +315,75 @@ class EDT:
                 continue
 
             binding_compat = self._binding_compat(binding, binding_path)
-            if binding_compat not in dt_compats:
-                # Either not a binding (binding_compat is None -- might be a
-                # binding fragment or a spurious file), or a binding whose
-                # compatible does not appear in the devicetree (picked up via
-                # some unrelated text in the binding file that happened to
-                # match a compatible)
-                continue
 
             # It's a match. Merge in the included bindings, do sanity checks,
             # and register the binding.
 
             binding = self._merge_included_bindings(binding, binding_path)
-            self._check_binding(binding, binding_path)
 
             on_bus = _on_bus_from_binding(binding)
 
             # Do not allow two different bindings to have the same
             # 'compatible:'/'on-bus:' combo
-            old_binding = self._compat2binding.get((binding_compat, on_bus))
-            if old_binding:
-                msg = "both {} and {} have 'compatible: {}'".format(
-                    old_binding[1], binding_path, binding_compat)
-                if on_bus is not None:
-                    msg += " and 'on-bus: {}'".format(on_bus)
-                _err(msg)
 
             self._compat2binding[binding_compat, on_bus] = (binding, binding_path)
+
+
+            import pprint
+            if 'on-bus' in binding and 'compatible' in binding:
+                compat = binding["compatible"]
+                label = compat.split(',')[1]
+                vendor = compat.split(',')[0]
+                bus = binding["on-bus"]
+                reg = reg_cnt[bus]
+
+                if vendor == "vnd":
+                    continue
+
+                if compat == "zephyr,bt-hci-spi-slave":
+                    continue
+
+                if bus == "spi":
+                    print(f'\t\t\t{label}@{hex(reg)[2:]} {{')
+                    print(f'\t\t\t\tcompatible = "{compat}";')
+                    print(f'\t\t\t\tlabel = "{label.upper()}";')
+                    print(f'\t\t\t\treg = <{hex(reg)}>;')
+                    if bus == 'spi':
+                        print(f'\t\t\t\tspi-max-frequency = <0>;')
+
+                    for prop in binding["properties"]:
+                        skip_required = ['spi-max-frequency', 'reg', 'label', 'compatible']
+                        if prop in skip_required:
+                            continue
+
+                        p = binding["properties"][prop]
+                        ptype = p['type']
+
+                        if "required" in p and p["required"]: 
+                            if ptype == "int":
+                                val = 0
+                                if 'const' in p:
+                                    val = p['const']
+                                print(f'\t\t\t\t{prop} = <{val}>;')
+                            elif ptype == "boolean":
+                                print(f'\t\t\t\t{prop};')
+                            elif ptype == "uint8-array":
+                                print(f'\t\t\t\t{prop} = [];')
+                            else:
+                                if not prop.endswith("-gpios"):
+                                    print(f"{prop} {p['type']}")
+                        else:
+                            if ptype == "boolean":
+                                print(f'\t\t\t\t/* {prop}; */')
+
+                        if prop.endswith("-gpios"):
+                            print(f'\t\t\t\t{prop} = <&test_gpio 0 0>;')
+
+
+                    print(f'\t\t\t}};')
+                    print("")
+
+                reg_cnt[bus] += 1
 
     def _binding_compat(self, binding, binding_path):
         # Returns the string listed in 'compatible:' in 'binding', or None if
