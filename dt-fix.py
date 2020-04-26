@@ -81,27 +81,36 @@ for f in file_list:
         match_dt_inst = re.search(r"DT_INST_(\d+)_("+regex_compat+")([0-9A-Z_]*)", s)
         match_h_h = re.search(r"DT_INST_##\s*(\w*)\s*##_("+regex_compat+")([0-9A-Z_]*)",s)
         match_bus = re.search(r"DT_("+regex_compat+")_BUS_([0-9A-Z]*)", s)
-        match_alias_label = re.search(r"DT_ALIAS_(.*)_LABEL", s)
-        match_gpio_pin = re.search(r"DT_ALIAS_(.*)_GPIOS_PIN", s)
-        match_gpio_ctrl = re.search(r"DT_ALIAS_(.*)_GPIOS_CONTROLLER", s)
-        match_gpio_flags = re.search(r"DT_ALIAS_(.*)_GPIOS_FLAGS", s)
+        match_alias_label = re.search(r"DT_ALIAS_([0-9A-Z_]*)_LABEL", s)
+        match_gpio_pin = re.search(r"DT_ALIAS_([0-9A-Z_]*)_GPIOS_PIN", s)
+        match_gpio_ctrl = re.search(r"DT_ALIAS_([0-9A-Z_]*)_GPIOS_CONTROLLER", s)
+        match_gpio_flags = re.search(r"DT_ALIAS_([0-9A-Z_]*)_GPIOS_FLAGS", s)
+
+        match_pwm_ctrl = re.search(r"DT_ALIAS_([0-9A-Z_]*)_PWMS_CONTROLLER", s)
+        match_pwm_ch = re.search(r"DT_ALIAS_([0-9A-Z_]*)_PWMS_CHANNEL", s)
+
         new_dt = None
         new_defined = None
 
         if match_alias_label:
             alias = match_alias_label.group(1)
             x = None
-#            print(f"MATCH ALIAS {f}:{line} a:{alias} {s.strip()}")
+            print(f"MATCH ALIAS LABEL {f}:{line} a:{alias} {s.strip()}")
 
             if s.startswith("#ifdef") or s.startswith("#if defined"):
-                x = f"#if DT_HAS_NODE(DT_ALIAS({alias.lower()}))\n"
                 pass
+                x = f"#if DT_HAS_NODE(DT_ALIAS({alias.lower()}))\n"
             elif s.startswith("#if !defined"):
+                pass
                 x = f"#if !DT_HAS_NODE(DT_ALIAS({alias.lower()}))\n"
             elif s.startswith("#if"):
+                pass
                 x = s.replace(match_alias_label.group(0), f"DT_HAS_NODE(DT_ALIAS({alias.lower()}))")
             elif s.startswith("#elif defined") or s.startswith("#elif"):
+                pass
                 x = f"#elif DT_HAS_NODE(DT_ALIAS({alias.lower()}))\n"
+            elif s.startswith("#define DT_"):
+                pass
             else:
                 x = s.replace(match_alias_label.group(0), f"DT_LABEL(DT_ALIAS({alias.lower()}))")
 
@@ -112,19 +121,53 @@ for f in file_list:
         if match_gpio_ctrl:
             alias = match_gpio_ctrl.group(1)
             x = None
-            print(f"MATCH ALIAS {f}:{line} a:{alias} {s.strip()}")
+            print(f"MATCH GPIO CTRL {f}:{line} a:{alias} {s.strip()}")
 
             if s.startswith("#ifdef") or s.startswith("#if defined"):
-                x = f"#if DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)\n"
-                pass
+                y = f"#if DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)\n"
             elif s.startswith("#if !defined"):
-                x = f"#if !DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)\n"
+                y = f"#if !DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)\n"
             elif s.startswith("#if"):
-                x = s.replace(match_gpio_ctrl.group(0), f"DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)")
+                y = s.replace(match_gpio_ctrl.group(0), f"DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)")
             elif s.startswith("#elif defined") or s.startswith("#elif"):
-                x = f"#elif !DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)\n"
+                y = f"#elif !DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)\n"
+            elif s.startswith("#define DT_"):
+                pass
             else:
+                print("HERE")
                 x = s.replace(match_gpio_ctrl.group(0), f"DT_GPIO_LABEL(DT_ALIAS({alias.lower()}), gpios)")
+
+            if x is not None:
+                output.write(x)
+                continue
+
+        if match_gpio_pin:
+            alias = match_gpio_pin.group(1)
+            x = None
+            print(f"MATCH GPIO PIN {f}:{line} a:{alias} {s.strip()}")
+
+            if s.startswith("#if"):
+                pass
+            elif s.startswith("#define DT_"):
+                pass
+            else:
+                x = s.replace(match_gpio_pin.group(0), f"DT_GPIO_PIN(DT_ALIAS({alias.lower()}), gpios)")
+
+            if x is not None:
+                output.write(x)
+                continue
+
+        if match_gpio_flags:
+            alias = match_gpio_flags.group(1)
+            x = None
+            print(f"MATCH GPIO FLAGS {f}:{line} a:{alias} {s.strip()}")
+
+            if s.startswith("#if"):
+                pass
+            elif s.startswith("#define DT_"):
+                pass
+            else:
+                x = s.replace(match_gpio_flags.group(0), f"DT_GPIO_FLAGS(DT_ALIAS({alias.lower()}), gpios)")
 
             if x is not None:
                 output.write(x)
