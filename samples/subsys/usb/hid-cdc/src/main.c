@@ -18,57 +18,57 @@
 LOG_MODULE_REGISTER(main);
 
 #ifdef DT_ALIAS_SW0_GPIOS_CONTROLLER
-#define PORT0 DT_ALIAS_SW0_GPIOS_CONTROLLER
+#define PORT0 DT_GPIO_LABEL(DT_ALIAS(sw0), gpios)
 #else
-#error DT_ALIAS_SW0_GPIOS_CONTROLLER needs to be set
+#error DT_GPIO_LABEL(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
 #ifdef DT_ALIAS_SW0_GPIOS_PIN
-#define PIN0     DT_ALIAS_SW0_GPIOS_PIN
+#define PIN0     DT_GPIO_PIN(DT_ALIAS(sw0), gpios)
 #else
-#error DT_ALIAS_SW0_GPIOS_PIN needs to be set
+#error DT_GPIO_PIN(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
 #ifdef DT_ALIAS_SW0_GPIOS_FLAGS
-#define PIN0_FLAGS DT_ALIAS_SW0_GPIOS_FLAGS
+#define PIN0_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw0), gpios)
 #else
-#error DT_ALIAS_SW0_GPIOS_FLAGS needs to be set
+#error DT_GPIO_FLAGS(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
 #ifdef DT_ALIAS_SW1_GPIOS_PIN
-#define PIN1	DT_ALIAS_SW1_GPIOS_PIN
+#define PIN1	DT_GPIO_PIN(DT_ALIAS(sw1), gpios)
 #endif
 
 #ifdef DT_ALIAS_SW1_GPIOS_CONTROLLER
-#define PORT1	DT_ALIAS_SW1_GPIOS_CONTROLLER
+#define PORT1	DT_GPIO_LABEL(DT_ALIAS(sw1), gpios)
 #endif
 
 #ifdef DT_ALIAS_SW1_GPIOS_FLAGS
-#define PIN1_FLAGS DT_ALIAS_SW1_GPIOS_FLAGS
+#define PIN1_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw1), gpios)
 #endif
 
 #ifdef DT_ALIAS_SW2_GPIOS_PIN
-#define PIN2	DT_ALIAS_SW2_GPIOS_PIN
+#define PIN2	DT_GPIO_PIN(DT_ALIAS(sw2), gpios)
 #endif
 
 #ifdef DT_ALIAS_SW2_GPIOS_CONTROLLER
-#define PORT2	DT_ALIAS_SW2_GPIOS_CONTROLLER
+#define PORT2	DT_GPIO_LABEL(DT_ALIAS(sw2), gpios)
 #endif
 
 #ifdef DT_ALIAS_SW2_GPIOS_FLAGS
-#define PIN2_FLAGS DT_ALIAS_SW2_GPIOS_FLAGS
+#define PIN2_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw2), gpios)
 #endif
 
 #ifdef DT_ALIAS_SW3_GPIOS_PIN
-#define PIN3	DT_ALIAS_SW3_GPIOS_PIN
+#define PIN3	DT_GPIO_PIN(DT_ALIAS(sw3), gpios)
 #endif
 
 #ifdef DT_ALIAS_SW3_GPIOS_CONTROLLER
-#define PORT3	DT_ALIAS_SW3_GPIOS_CONTROLLER
+#define PORT3	DT_GPIO_LABEL(DT_ALIAS(sw3), gpios)
 #endif
 
 #ifdef DT_ALIAS_SW3_GPIOS_FLAGS
-#define PIN3_FLAGS DT_ALIAS_SW3_GPIOS_FLAGS
+#define PIN3_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw3), gpios)
 #endif
 
 /* Event FIFO */

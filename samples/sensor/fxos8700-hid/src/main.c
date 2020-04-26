@@ -17,41 +17,41 @@ LOG_MODULE_REGISTER(main);
 
 /* change this to use another GPIO port */
 #ifdef DT_ALIAS_SW0_GPIOS_CONTROLLER
-#define PORT0 DT_ALIAS_SW0_GPIOS_CONTROLLER
+#define PORT0 DT_GPIO_LABEL(DT_ALIAS(sw0), gpios)
 #else
-#error DT_ALIAS_SW0_GPIOS_CONTROLLER needs to be set
+#error DT_GPIO_LABEL(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
 /* change this to use another GPIO pin */
 #ifdef DT_ALIAS_SW0_GPIOS_PIN
-#define PIN0     DT_ALIAS_SW0_GPIOS_PIN
+#define PIN0     DT_GPIO_PIN(DT_ALIAS(sw0), gpios)
 #else
-#error DT_ALIAS_SW0_GPIOS_PIN needs to be set
+#error DT_GPIO_PIN(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
 /* The switch pin pull-up/down flags */
 #ifdef DT_ALIAS_SW0_GPIOS_FLAGS
-#define PIN0_FLAGS DT_ALIAS_SW0_GPIOS_FLAGS
+#define PIN0_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw0), gpios)
 #else
-#error DT_ALIAS_SW0_GPIOS_FLAGS needs to be set
+#error DT_GPIO_FLAGS(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
 /* If second button exists, use it as right-click. */
 #ifdef DT_ALIAS_SW1_GPIOS_PIN
-#define PIN1	DT_ALIAS_SW1_GPIOS_PIN
+#define PIN1	DT_GPIO_PIN(DT_ALIAS(sw1), gpios)
 #endif
 
 #ifdef DT_ALIAS_SW1_GPIOS_CONTROLLER
-#define PORT1	DT_ALIAS_SW1_GPIOS_CONTROLLER
+#define PORT1	DT_GPIO_LABEL(DT_ALIAS(sw1), gpios)
 #endif
 
 #ifdef DT_ALIAS_SW1_GPIOS_FLAGS
-#define PIN1_FLAGS DT_ALIAS_SW1_GPIOS_FLAGS
+#define PIN1_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw1), gpios)
 #endif
 
-#define LED_PORT	DT_ALIAS_LED0_GPIOS_CONTROLLER
-#define LED		DT_ALIAS_LED0_GPIOS_PIN
-#define LED_FLAGS	DT_ALIAS_LED0_GPIOS_FLAGS
+#define LED_PORT	DT_GPIO_LABEL(DT_ALIAS(led0), gpios)
+#define LED		DT_GPIO_PIN(DT_ALIAS(led0), gpios)
+#define LED_FLAGS	DT_GPIO_FLAGS(DT_ALIAS(led0), gpios)
 
 #ifdef CONFIG_FXOS8700
 #include <drivers/sensor.h>
