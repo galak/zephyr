@@ -19,7 +19,7 @@ LOG_MODULE_REGISTER(main);
 #include <sys/util.h>
 
 #define STRIP_LABEL		DT_LABEL(DT_ALIAS(led_strip))
-#define STRIP_NUM_PIXELS	DT_ALIAS_LED_STRIP_CHAIN_LENGTH
+#define STRIP_NUM_PIXELS	DT_PROP(DT_ALIAS(led_strip), chain_length)
 
 #define DELAY_TIME K_MSEC(50)
 
