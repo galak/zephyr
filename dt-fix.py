@@ -125,6 +125,8 @@ for f in file_list:
 
             if s.startswith("#ifdef"):
                 x = f"#if DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)\n"
+            elif s.startswith("#if defined"):
+                x = s.replace(match_gpio_ctrl.group(0), f"DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)")
             elif s.startswith("#if !defined"):
                 y = f"#if !DT_NODE_HAS_PROP(DT_ALIAS({alias.lower()}), gpios)\n"
             elif s.startswith("#if"):
@@ -148,6 +150,8 @@ for f in file_list:
 
             if s.startswith("#ifdef"):
                 x = f"#if DT_PHA_HAS_CELL(DT_ALIAS({alias.lower()}), gpios, pin)\n"
+            elif s.startswith("#if defined"):
+                x = s.replace(match_gpio_pin.group(0), f"DT_PHA_HAS_CELL(DT_ALIAS({alias.lower()}), gpios, pin)")
             elif s.startswith("#if"):
                 pass
             elif s.startswith("#define DT_"):
@@ -166,6 +170,8 @@ for f in file_list:
 
             if s.startswith("#ifdef"):
                 x = f"#if DT_PHA_HAS_CELL(DT_ALIAS({alias.lower()}), gpios, flags)\n"
+            elif s.startswith("#if defined"):
+                x = s.replace(match_gpio_flags.group(0), f"DT_PHA_HAS_CELL(DT_ALIAS({alias.lower()}), gpios, flags)")
             elif s.startswith("#if"):
                 pass
             elif s.startswith("#define DT_"):
