@@ -47,7 +47,7 @@ struct font_info {
 
 #define STAT_COUNT 128
 
-#ifdef DT_ALIAS_SW0_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw0), gpios, flags)
 #define PULL_UP DT_GPIO_FLAGS(DT_ALIAS(sw0), gpios)
 #else
 #define PULL_UP 0

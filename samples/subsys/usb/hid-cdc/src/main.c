@@ -23,19 +23,19 @@ LOG_MODULE_REGISTER(main);
 #error DT_GPIO_LABEL(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
-#ifdef DT_ALIAS_SW0_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw0), gpios, pin)
 #define PIN0     DT_GPIO_PIN(DT_ALIAS(sw0), gpios)
 #else
 #error DT_GPIO_PIN(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
-#ifdef DT_ALIAS_SW0_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw0), gpios, flags)
 #define PIN0_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw0), gpios)
 #else
 #error DT_GPIO_FLAGS(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
-#ifdef DT_ALIAS_SW1_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw1), gpios, pin)
 #define PIN1	DT_GPIO_PIN(DT_ALIAS(sw1), gpios)
 #endif
 
@@ -43,11 +43,11 @@ LOG_MODULE_REGISTER(main);
 #define PORT1	DT_GPIO_LABEL(DT_ALIAS(sw1), gpios)
 #endif
 
-#ifdef DT_ALIAS_SW1_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw1), gpios, flags)
 #define PIN1_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw1), gpios)
 #endif
 
-#ifdef DT_ALIAS_SW2_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw2), gpios, pin)
 #define PIN2	DT_GPIO_PIN(DT_ALIAS(sw2), gpios)
 #endif
 
@@ -55,11 +55,11 @@ LOG_MODULE_REGISTER(main);
 #define PORT2	DT_GPIO_LABEL(DT_ALIAS(sw2), gpios)
 #endif
 
-#ifdef DT_ALIAS_SW2_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw2), gpios, flags)
 #define PIN2_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw2), gpios)
 #endif
 
-#ifdef DT_ALIAS_SW3_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw3), gpios, pin)
 #define PIN3	DT_GPIO_PIN(DT_ALIAS(sw3), gpios)
 #endif
 
@@ -67,7 +67,7 @@ LOG_MODULE_REGISTER(main);
 #define PORT3	DT_GPIO_LABEL(DT_ALIAS(sw3), gpios)
 #endif
 
-#ifdef DT_ALIAS_SW3_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw3), gpios, flags)
 #define PIN3_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw3), gpios)
 #endif
 
@@ -501,7 +501,7 @@ static void btn0(struct device *gpio, struct gpio_callback *cb, u32_t pins)
 	k_sem_give(&evt_sem);
 }
 
-#ifdef DT_ALIAS_SW1_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw1), gpios, pin)
 static void btn1(struct device *gpio, struct gpio_callback *cb, u32_t pins)
 {
 	struct app_evt_t *ev = app_evt_alloc();
@@ -512,7 +512,7 @@ static void btn1(struct device *gpio, struct gpio_callback *cb, u32_t pins)
 }
 #endif
 
-#ifdef DT_ALIAS_SW2_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw2), gpios, pin)
 static void btn2(struct device *gpio, struct gpio_callback *cb, u32_t pins)
 {
 	struct app_evt_t *ev = app_evt_alloc();
@@ -523,7 +523,7 @@ static void btn2(struct device *gpio, struct gpio_callback *cb, u32_t pins)
 }
 #endif
 
-#ifdef DT_ALIAS_SW3_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw3), gpios, pin)
 static void btn3(struct device *gpio, struct gpio_callback *cb, u32_t pins)
 {
 	struct app_evt_t *ev = app_evt_alloc();
@@ -598,7 +598,7 @@ void main(void)
 		return;
 	}
 
-#ifdef DT_ALIAS_SW1_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw1), gpios, pin)
 	if (callbacks_configure(device_get_binding(PORT1), PIN1, PIN1_FLAGS,
 				&btn1, &callback[1])) {
 		LOG_ERR("Failed configuring button 1 callback.");
@@ -606,7 +606,7 @@ void main(void)
 	}
 #endif
 
-#ifdef DT_ALIAS_SW2_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw2), gpios, pin)
 	if (callbacks_configure(device_get_binding(PORT2), PIN2, PIN2_FLAGS,
 				&btn2, &callback[2])) {
 		LOG_ERR("Failed configuring button 2 callback.");
@@ -614,7 +614,7 @@ void main(void)
 	}
 #endif
 
-#ifdef DT_ALIAS_SW3_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw3), gpios, pin)
 	if (callbacks_configure(device_get_binding(PORT3), PIN3, PIN3_FLAGS,
 				&btn3, &callback[3])) {
 		LOG_ERR("Failed configuring button 3 callback.");

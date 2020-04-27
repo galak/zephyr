@@ -13,13 +13,13 @@
 
 #define SLEEP_TIME_MS	1
 
-#ifdef DT_ALIAS_SW0_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw0), gpios, flags)
 #define SW0_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw0), gpios)
 #else
 #define SW0_FLAGS 0
 #endif
 
-#ifdef DT_ALIAS_LED0_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(led0), gpios, flags)
 #define LED0_FLAGS DT_GPIO_FLAGS(DT_ALIAS(led0), gpios)
 #else
 #define LED0_FLAGS 0

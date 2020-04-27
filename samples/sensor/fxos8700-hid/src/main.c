@@ -23,21 +23,21 @@ LOG_MODULE_REGISTER(main);
 #endif
 
 /* change this to use another GPIO pin */
-#ifdef DT_ALIAS_SW0_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw0), gpios, pin)
 #define PIN0     DT_GPIO_PIN(DT_ALIAS(sw0), gpios)
 #else
 #error DT_GPIO_PIN(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
 /* The switch pin pull-up/down flags */
-#ifdef DT_ALIAS_SW0_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw0), gpios, flags)
 #define PIN0_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw0), gpios)
 #else
 #error DT_GPIO_FLAGS(DT_ALIAS(sw0), gpios) needs to be set
 #endif
 
 /* If second button exists, use it as right-click. */
-#ifdef DT_ALIAS_SW1_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw1), gpios, pin)
 #define PIN1	DT_GPIO_PIN(DT_ALIAS(sw1), gpios)
 #endif
 
@@ -45,7 +45,7 @@ LOG_MODULE_REGISTER(main);
 #define PORT1	DT_GPIO_LABEL(DT_ALIAS(sw1), gpios)
 #endif
 
-#ifdef DT_ALIAS_SW1_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw1), gpios, flags)
 #define PIN1_FLAGS DT_GPIO_FLAGS(DT_ALIAS(sw1), gpios)
 #endif
 
@@ -93,7 +93,7 @@ static void left_button(struct device *gpio, struct gpio_callback *cb,
 	}
 }
 
-#ifdef DT_ALIAS_SW1_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw1), gpios, pin)
 static void right_button(struct device *gpio, struct gpio_callback *cb,
 			 u32_t pins)
 {
@@ -217,7 +217,7 @@ void main(void)
 		return;
 	}
 
-#ifdef DT_ALIAS_SW1_GPIOS_PIN
+#if DT_PHA_HAS_CELL(DT_ALIAS(sw1), gpios, pin)
 	if (callbacks_configure(device_get_binding(PORT1), PIN1, PIN1_FLAGS,
 				&right_button, &callback[1], &def_val[1])) {
 		LOG_ERR("Failed configuring right button callback.");

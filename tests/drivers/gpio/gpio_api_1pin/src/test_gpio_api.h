@@ -14,7 +14,7 @@
 #if defined(DT_ALIAS_LED0_GPIOS_CONTROLLER)
 #define TEST_DEV             DT_GPIO_LABEL(DT_ALIAS(led0), gpios)
 #define TEST_PIN             DT_GPIO_PIN(DT_ALIAS(led0), gpios)
-#ifdef DT_ALIAS_LED0_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(led0), gpios, flags)
 #define TEST_PIN_DTS_FLAGS   DT_GPIO_FLAGS(DT_ALIAS(led0), gpios)
 #else
 #define TEST_PIN_DTS_FLAGS   0

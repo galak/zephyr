@@ -25,13 +25,13 @@ struct printk_data_t {
 
 K_FIFO_DEFINE(printk_fifo);
 
-#ifdef DT_ALIAS_LED0_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(led0), gpios, flags)
 #define LED0_FLAGS DT_GPIO_FLAGS(DT_ALIAS(led0), gpios)
 #else
 #define LED0_FLAGS 0
 #endif
 
-#ifdef DT_ALIAS_LED1_GPIOS_FLAGS
+#if DT_PHA_HAS_CELL(DT_ALIAS(led1), gpios, flags)
 #define LED1_FLAGS DT_GPIO_FLAGS(DT_ALIAS(led1), gpios)
 #else
 #define LED1_FLAGS 0
