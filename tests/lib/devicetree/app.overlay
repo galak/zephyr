@@ -223,6 +223,8 @@
 			dma-names = "tx", "rx";
 			clocks = <&test_clk 3 7>, <&test_fixed_clk>, <&test_clk 8 2>;
 			clock-names = "clk-a", "clk-fixed", "clk-b";
+			pwms = <&test_pwm1 8 3>, <&test_pwm2 5 1>;
+			pwm-names = "reg", "green";
 		};
 
 		/* there should only be one of these */
@@ -276,6 +278,22 @@
 			reg = < 0x44442222 0x1000 >;
 			interrupts = <12 3>;
 			label = "TEST_DMA_CTRL_2";
+			status = "okay";
+		};
+
+		test_pwm1: pwm@55551111 {
+			compatible = "vnd,pwm";
+			#pwm-cells = <2>;
+			reg = < 0x55551111 0x1000 >;
+			label = "TEST_PWM_CTRL_1";
+			status = "okay";
+		};
+
+		test_pwm2: pwm@55552222 {
+			compatible = "vnd,pwm";
+			#pwm-cells = <2>;
+			reg = < 0x55552222 0x1000 >;
+			label = "TEST_PWM_CTRL_2";
 			status = "okay";
 		};
 	};
