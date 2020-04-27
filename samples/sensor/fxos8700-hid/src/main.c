@@ -16,7 +16,7 @@
 LOG_MODULE_REGISTER(main);
 
 /* change this to use another GPIO port */
-#ifdef DT_ALIAS_SW0_GPIOS_CONTROLLER
+#if DT_NODE_HAS_PROP(DT_ALIAS(sw0), gpios)
 #define PORT0 DT_GPIO_LABEL(DT_ALIAS(sw0), gpios)
 #else
 #error DT_GPIO_LABEL(DT_ALIAS(sw0), gpios) needs to be set
@@ -41,7 +41,7 @@ LOG_MODULE_REGISTER(main);
 #define PIN1	DT_GPIO_PIN(DT_ALIAS(sw1), gpios)
 #endif
 
-#ifdef DT_ALIAS_SW1_GPIOS_CONTROLLER
+#if DT_NODE_HAS_PROP(DT_ALIAS(sw1), gpios)
 #define PORT1	DT_GPIO_LABEL(DT_ALIAS(sw1), gpios)
 #endif
 

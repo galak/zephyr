@@ -65,7 +65,7 @@ void main(void)
 			   BIT(DT_GPIO_PIN(DT_ALIAS(sw0), gpios)));
 	gpio_add_callback(dev_button, &button_cb_data);
 
-#ifdef DT_ALIAS_LED0_GPIOS_CONTROLLER
+#if DT_NODE_HAS_PROP(DT_ALIAS(led0), gpios)
 	struct device *dev_led;
 
 	dev_led = device_get_binding(DT_GPIO_LABEL(DT_ALIAS(led0), gpios));
@@ -86,7 +86,7 @@ void main(void)
 	printk("Press %s on the board\n", DT_LABEL(DT_ALIAS(sw0)));
 
 	while (1) {
-#ifdef DT_ALIAS_LED0_GPIOS_CONTROLLER
+#if DT_NODE_HAS_PROP(DT_ALIAS(led0), gpios)
 		bool val;
 
 		val = gpio_pin_get(dev_button, DT_GPIO_PIN(DT_ALIAS(sw0), gpios));
