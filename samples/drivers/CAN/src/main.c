@@ -81,7 +81,7 @@ void change_led(struct zcan_frame *msg, void *led_dev_param)
 {
 	struct device *led_dev = (struct device *)led_dev_param;
 
-#if defined(DT_ALIAS_LED0_GPIOS_PIN) && defined(DT_ALIAS_LED0_GPIOS_CONTROLLER)
+#if DT_PHA_HAS_CELL(DT_ALIAS(led0), gpios, pin) && DT_NODE_HAS_PROP(DT_ALIAS(led0), gpios)
 
 	if (!led_dev_param) {
 		printk("No LED GPIO device\n");
@@ -206,7 +206,7 @@ void main(void)
 	can_configure(can_dev, CAN_LOOPBACK_MODE, 125000);
 #endif
 
-#if defined(DT_ALIAS_LED0_GPIOS_PIN) && defined(DT_ALIAS_LED0_GPIOS_CONTROLLER)
+#if DT_PHA_HAS_CELL(DT_ALIAS(led0), gpios, pin) && DT_NODE_HAS_PROP(DT_ALIAS(led0), gpios)
 	led_gpio_dev = device_get_binding(DT_GPIO_LABEL(DT_ALIAS(led0), gpios));
 	if (!led_gpio_dev) {
 		printk("LED: Device driver not found.\n");

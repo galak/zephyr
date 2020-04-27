@@ -11,7 +11,7 @@
 #include <drivers/gpio.h>
 #include <ztest.h>
 
-#if defined(DT_ALIAS_LED0_GPIOS_CONTROLLER)
+#if DT_NODE_HAS_PROP(DT_ALIAS(led0), gpios)
 #define TEST_DEV             DT_GPIO_LABEL(DT_ALIAS(led0), gpios)
 #define TEST_PIN             DT_GPIO_PIN(DT_ALIAS(led0), gpios)
 #if DT_PHA_HAS_CELL(DT_ALIAS(led0), gpios, flags)
