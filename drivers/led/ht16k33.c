@@ -503,4 +503,4 @@ static const struct led_driver_api ht16k33_leds_api = {
 		    (HT16K33_DEVICE_WITH_IRQ(id)),		\
 		    (HT16K33_DEVICE(id)))
 
-DT_INST_FOREACH(HT16K33_INSTANTIATE);
+DT_INST_FOREACH_STATUS_OKAY(HT16K33_INSTANTIATE);

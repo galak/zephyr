@@ -389,7 +389,7 @@ enabled instance. Currently, this looks like this:
 			    &my_api_funcs)
 
    /* Call the device creation macro for every compatible node: */
-   DT_INST_FOREACH(CREATE_MY_DEVICE);
+   DT_INST_FOREACH_STATUS_OKAY(CREATE_MY_DEVICE);
 
 Notice the use of :c:func:`DT_INST_PROP` and :c:func:`DT_INST_FOREACH`.
 These are helpers which rely on ``DT_DRV_COMPAT`` to choose devicetree nodes
