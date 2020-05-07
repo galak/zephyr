@@ -187,21 +187,22 @@
 /**
  * @brief Get a node identifier for an instance of a compatible
  *
- * Instance numbers are just indexes among enabled nodes with the same
+ * Instance numbers are just indexes among *all* nodes with the same
  * compatible. This complicates their use outside of device drivers.
  * The **only guarantees** are:
  *
  * - instance numbers start at 0,
  * - are contiguous, and
- * - exactly one is assigned for each enabled node with a matching
- *   compatible
+ * - exactly one is assigned for *each* node with a matching compatible,
+ *   **including disabled ones**
  *
  * Instance numbers **in no way reflect** any numbering scheme that
  * might exist in SoC documentation, node labels or unit addresses, or
- * properties of the /aliases node. There **is no guarantee** that the
- * same node will have the same instance number between builds, even
- * if you are building the same application again in the same build
- * directory.
+ * properties of the /aliases node.
+ *
+ * There **is no guarantee** that the same node will have the same
+ * instance number between builds, even if you are building the same
+ * application again in the same build directory.
  *
  * Example devicetree fragment:
  *
