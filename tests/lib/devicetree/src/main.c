@@ -181,7 +181,7 @@ static void test_has_nodelabel(void)
 		      "TEST_NODELABEL_ALLCAPS");
 }
 
-#define TA_HAS_COMPAT(compat) DT_NODE_HAS_COMPAT_STATUS_OKAY(TEST_ARRAYS, compat)
+#define TA_HAS_COMPAT(compat) DT_NODE_HAS_COMPAT_STATUS(TEST_ARRAYS, compat, okay)
 
 static void test_has_compat(void)
 {
