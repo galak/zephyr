@@ -50,14 +50,14 @@
 	#size-cells = <1>;
 
 	clkctl0: clkctl@1000 {
-		compatible = "nxp,lpc-syscon";
+		compatible = "nxp,rt6xx-syscon";
 		reg = <0x1000 0x4000>;
 		label = "CLKCTL_0";
 		#clock-cells = <2>;
 	};
 
 	clkctl1: clkctl@21000 {
-		compatible = "nxp,lpc-syscon";
+		compatible = "nxp,rt6xx-syscon";
 		reg = <0x21000 0x4000>;
 		label = "CLKCTL_1";
 		#clock-cells = <2>;
