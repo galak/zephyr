@@ -325,7 +325,7 @@ static const struct mcux_flexcomm_config mcux_flexcomm_##n##_config = {	\
 	.base = (USART_Type *)DT_INST_REG_ADDR(n),			\
 	.clock_name = DT_INST_CLOCKS_LABEL(n),				\
 	.clock_subsys =				\
-	(clock_control_subsys_t)DT_INST_CLOCKS_CELL(n, name),\
+	(clock_control_subsys_t)CLK_GATE_DEFINE(DT_INST_CLOCKS_CELL(n, offset), DT_INST_CLOCKS_CELL(n, bit)),\
 	.baud_rate = DT_INST_PROP(n, current_speed),			\
 	IRQ_FUNC_INIT							\
 }

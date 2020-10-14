@@ -39,38 +39,32 @@ static int mcux_lpc_syscon_clock_control_get_subsys_rate(
 	uint32_t clock_name = (uint32_t) sub_system;
 
 	switch (clock_name) {
-	case MCUX_FLEXCOMM0_CLK:
+	case kCLOCK_Flexcomm0:
 		*rate = CLOCK_GetFlexCommClkFreq(0);
 		break;
-	case MCUX_FLEXCOMM1_CLK:
+	case kCLOCK_Flexcomm1:
 		*rate = CLOCK_GetFlexCommClkFreq(1);
 		break;
-	case MCUX_FLEXCOMM2_CLK:
+	case kCLOCK_Flexcomm2:
 		*rate = CLOCK_GetFlexCommClkFreq(2);
 		break;
-	case MCUX_FLEXCOMM3_CLK:
+	case kCLOCK_Flexcomm3:
 		*rate = CLOCK_GetFlexCommClkFreq(3);
 		break;
-	case MCUX_FLEXCOMM4_CLK:
+	case kCLOCK_Flexcomm4:
 		*rate = CLOCK_GetFlexCommClkFreq(4);
 		break;
-	case MCUX_FLEXCOMM5_CLK:
+	case kCLOCK_Flexcomm5:
 		*rate = CLOCK_GetFlexCommClkFreq(5);
 		break;
-	case MCUX_FLEXCOMM6_CLK:
+	case kCLOCK_Flexcomm6:
 		*rate = CLOCK_GetFlexCommClkFreq(6);
 		break;
-	case MCUX_FLEXCOMM7_CLK:
+	case kCLOCK_Flexcomm7:
 		*rate = CLOCK_GetFlexCommClkFreq(7);
 		break;
-	case MCUX_HS_SPI_CLK:
-#if defined(FSL_FEATURE_FLEXCOMM8_SPI_INDEX)
+	case kCLOCK_Hs_Lspi:
 		*rate = CLOCK_GetHsLspiClkFreq();
-#elif defined(FSL_FEATURE_FLEXCOMM14_SPI_INDEX)
-		*rate = CLOCK_GetFlexCommClkFreq(14);
-#else
-		LOG_ERR("Missing feature define for HS_SPI clock!");
-#endif
 		break;
 	}
 #endif
