@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+description: Test file for including other bindings
+compatible: include
+properties:
+  x:
+    type: int
+  y:
+    type: int
+  z:
+    type: int

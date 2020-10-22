@@ -326,6 +326,70 @@ def test_dependencies():
     assert edt.get_node("/") in edt.get_node("/in-dir-1").depends_on
     assert edt.get_node("/in-dir-1") in edt.get_node("/").required_by
 
+def test_includes():
+    '''Specific test cases for the include: feature.'''
+
+    fname2path = {'include.yaml': 'test-bindings-include/include.yaml',
+                  'include-2.yaml': 'test-bindings-include/include-2.yaml'}
+
+    with pytest.raises(edtlib.EDTError) as e:
+        edtlib.Binding("test-bindings-include/allow-and-blocklist.yaml", fname2path)
+    assert ("should not specify both 'property-allowlist:' and 'property-blocklist:'"
+            in str(e.value))
+
+    with pytest.raises(edtlib.EDTError) as e:
+        edtlib.Binding("test-bindings-include/allow-not-list.yaml", fname2path)
+    value_str = str(e.value)
+    assert value_str.startswith("'property-allowlist' value")
+    assert value_str.endswith("should be a list")
+
+    with pytest.raises(edtlib.EDTError) as e:
+        edtlib.Binding("test-bindings-include/block-not-list.yaml", fname2path)
+    value_str = str(e.value)
+    assert value_str.startswith("'property-blocklist' value")
+    assert value_str.endswith("should be a list")
+
+    with pytest.raises(edtlib.EDTError) as e:
+        binding = edtlib.Binding("test-bindings-include/include-invalid-keys.yaml", fname2path)
+    value_str = str(e.value)
+    assert value_str.startswith(
+        "'include:' in test-bindings-include/include-invalid-keys.yaml should not have these "
+        "unexpected contents: ")
+    assert 'bad-key-1' in value_str
+    assert 'bad-key-2' in value_str
+
+    with pytest.raises(edtlib.EDTError) as e:
+        binding = edtlib.Binding("test-bindings-include/include-invalid-type.yaml", fname2path)
+    value_str = str(e.value)
+    assert value_str.startswith(
+        "'include:' in test-bindings-include/include-invalid-type.yaml "
+        "should be a string or list, but has type ")
+
+    with pytest.raises(edtlib.EDTError) as e:
+        binding = edtlib.Binding("test-bindings-include/include-no-name.yaml", fname2path)
+    value_str = str(e.value)
+    assert value_str.startswith("'include:' element")
+    assert value_str.endswith(
+        "in test-bindings-include/include-no-name.yaml should have a 'name' key")
+
+    binding = edtlib.Binding("test-bindings-include/allowlist.yaml", fname2path)
+    assert set(binding.prop2specs.keys()) == {'x'}  # 'x' is allowed
+
+    binding = edtlib.Binding("test-bindings-include/empty-allowlist.yaml", fname2path)
+    assert set(binding.prop2specs.keys()) == set()  # nothing is allowed
+
+    binding = edtlib.Binding("test-bindings-include/blocklist.yaml", fname2path)
+    assert set(binding.prop2specs.keys()) == {'y', 'z'}  # 'x' is blocked
+
+    binding = edtlib.Binding("test-bindings-include/empty-blocklist.yaml", fname2path)
+    assert set(binding.prop2specs.keys()) == {'x', 'y', 'z'}  # nothing is blocked
+
+    binding = edtlib.Binding("test-bindings-include/intermixed.yaml", fname2path)
+    assert set(binding.prop2specs.keys()) == {'x', 'a'}
+
+    binding = edtlib.Binding("test-bindings-include/include-no-list.yaml", fname2path)
+    assert set(binding.prop2specs.keys()) == {'x', 'y', 'z'}
+
 def test_slice_errs(tmp_path):
     '''Test error messages from the internal _slice() helper'''
 

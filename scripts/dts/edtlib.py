@@ -1619,26 +1619,56 @@ class Binding:
             return raw
 
         include = raw.pop("include")
-        fnames = []
-        if isinstance(include, str):
-            fnames.append(include)
-        elif isinstance(include, list):
-            if not all(isinstance(elem, str) for elem in include):
-                _err(f"all elements in 'include:' in {binding_path} "
-                     "should be strings")
-            fnames += include
-        else:
-            _err(f"'include:' in {binding_path} "
-                 "should be a string or a list of strings")
 
         # First, merge the included files together. If more than one included
         # file has a 'required:' for a particular property, OR the values
         # together, so that 'required: true' wins.
 
         merged = {}
-        for fname in fnames:
-            _merge_props(merged, self._load_raw(fname), None, binding_path,
-                         check_required=False)
+
+        if isinstance(include, str):
+            # Simple scalar string case
+            _merge_props(merged, self._load_raw(include), None, binding_path,
+                         False)
+        elif isinstance(include, list):
+            # List of strings and maps. These types may be intermixed.
+            for elem in include:
+                if isinstance(elem, str):
+                    _merge_props(merged, self._load_raw(elem), None,
+                                 binding_path, False)
+                elif isinstance(elem, dict):
+                    name = elem.pop('name', None)
+                    allowlist = elem.pop('property-allowlist', None)
+                    blocklist = elem.pop('property-blocklist', None)
+
+                    if elem:
+                        # We've popped out all the valid keys.
+                        _err(f"'include:' in {binding_path} should not have "
+                             f"these unexpected contents: {elem}")
+
+                    if name is None:
+                        _err(f"'include:' element {elem} in {binding_path} "
+                             "should have a 'name' key")
+
+                    if allowlist is not None and blocklist is not None:
+                        _err(f"'include:' element {elem} in {binding_path} "
+                             "should not specify both 'property-allowlist:' "
+                             "and 'property-blocklist:'")
+
+                    contents = self._load_raw(name)
+
+                    _filter_properties(contents, allowlist, blocklist,
+                                       binding_path)
+                    _merge_props(merged, contents, None, binding_path, False)
+                else:
+                    _err(f"all elements in 'include:' in {binding_path} "
+                         "should be either strings or maps with a 'name' key "
+                         "and optional 'property-allowlist' or "
+                         f"'property-blocklist' keys, but got: {elem}")
+        else:
+            # Invalid item.
+            _err(f"'include:' in {binding_path} "
+                 f"should be a string or list, but has type {type(include)}")
 
         # Next, merge the merged included files into 'raw'. Error out if
         # 'raw' has 'required: false' while the merged included files have
@@ -1962,6 +1992,49 @@ def _binding_inc_error(msg):
     # Helper for reporting errors in the !include implementation
 
     raise yaml.constructor.ConstructorError(None, None, "error: " + msg)
+
+
+def _filter_properties(raw, allowlist, blocklist, binding_path):
+    # Destructively modifies 'raw["properties"]', if it
+    # exists, according to 'allowlist' and 'blocklist'.
+
+    if "properties" not in raw:
+        return
+
+    props = raw["properties"]
+
+    _check_prop_filter('property-allowlist', allowlist, binding_path)
+    _check_prop_filter('property-blocklist', blocklist, binding_path)
+
+    if not (allowlist is not None or blocklist is not None):
+        return
+
+    new_props = OrderedDict()
+    if allowlist is not None:
+        allowset = set(allowlist)
+        for prop in props:
+            if prop in allowset:
+                new_props[prop] = props[prop]
+    else:
+        # Binding._merge_includes() checks that allowlist and blocklist
+        # are not both set.
+        blockset = set(blocklist)
+        for prop in props:
+            if prop not in blockset:
+                new_props[prop] = props[prop]
+
+    raw["properties"] = new_props
+
+
+def _check_prop_filter(name, value, binding_path):
+    # Ensure an include: ... property-allowlist or property-blocklist
+    # is a list.
+
+    if value is None:
+        return
+
+    if not isinstance(value, list):
+        _err(f"'{name}' value {value} in {binding_path} should be a list")
 
 
 def _merge_props(to_dict, from_dict, parent, binding_path, check_required):
