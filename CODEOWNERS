@@ -343,6 +343,7 @@
 /dts/riscv/microsemi-miv.dtsi             @galak
 /dts/riscv/rv32m1*                        @MaureenHelm
 /dts/riscv/riscv32-litex-vexriscv.dtsi    @mateusz-holenko @kgugala @pgielda
+/dts/arm/armv*m.dtsi                      @galak
 /dts/arm/armv7-r.dtsi                     @bbolen @stephanosio
 /dts/arm/armv8-a.dtsi                     @carlocaione
 /dts/arm/xilinx/                          @bbolen @stephanosio
