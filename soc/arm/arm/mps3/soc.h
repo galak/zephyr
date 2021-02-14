@@ -9,6 +9,12 @@
 
 #define __MPU_PRESENT 1
 
+#if defined(CONFIG_SOC_MPS3_AN524)
+#define __SAUREGION_PRESENT       1U        /* SAU regions present */
+#define __FPU_PRESENT             CONFIG_CPU_HAS_FPU
+#define __DSP_PRESENT             1U        /* DSP extension present */
+#endif
+
 #if defined(CONFIG_SOC_MPS3_AN547)
 #define __SAUREGION_PRESENT       1U        /* SAU regions present */
 #define __FPU_PRESENT             CONFIG_CPU_HAS_FPU
