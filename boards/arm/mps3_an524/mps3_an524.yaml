@@ -1,0 +1,18 @@
+identifier: mps3_an524
+name: Arm V2M MPS3-AN524
+type: mcu
+arch: arm
+simulation: qemu
+toolchain:
+  - gnuarmemb
+  - zephyr
+  - xtools
+supported:
+  - gpio
+testing:
+  default: true
+  ignore_tags:
+    - drivers
+    - bluetooth
+    - net
+    - timer
