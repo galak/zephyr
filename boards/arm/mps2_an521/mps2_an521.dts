@@ -6,6 +6,7 @@
 
 /dts-v1/;
 
+#include <mem.h>
 #include <arm/armv8-m.dtsi>
 #include <dt-bindings/i2c/i2c.h>
 
@@ -25,8 +26,13 @@
 	chosen {
 		zephyr,console = &uart0;
 		zephyr,shell-uart = &uart0;
-		zephyr,sram = &sram0;
-		zephyr,flash = &flash0;
+		zephyr,sram = &sram2_3;
+		/* Board has no flash, rather code is loaded by auxilary
+		 * hw from a MicroSD and injected into SSRAM, starting
+		 * from address 0x1000_0000, i.e. from secure SSRAM, mapped
+		 * inside the code region.
+		 */
+		zephyr,flash = &sram1;
 	};
 
 	leds {
@@ -72,13 +78,19 @@
 		};
 	};
 
-	sram0: memory@30000000 {
+	sram1: memory@10000000 {
 		compatible = "mmio-sram";
-		reg = <0x30000000 0x1000000>;
+		reg = <0x10000000 DT_SIZE_M(4)>;
 	};
 
-	flash0: flash@10000000 {
-		reg = <0x10000000 0xE000000>;
+	sram2_3: memory@38000000 {
+		compatible = "mmio-sram";
+		reg = <0x38000000 DT_SIZE_M(4)>;
+	};
+
+	psram: memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 DT_SIZE_M(16)>;
 	};
 
 	soc {
