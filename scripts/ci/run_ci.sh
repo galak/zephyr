@@ -137,6 +137,8 @@ function get_tests_to_run() {
 	fi
 	if [ -z "$modified" -a -n "$twister_exclude_tag_opt" ]; then
 		echo "NOT MODIFIED - WITH TAGS"
+		${twister} ${twister_options} +modified_tags.args \
+			--save-tests test_file_tags.txt || exit 1
 	fi
 	rm -f modified_tests.args modified_boards.args modified_archs.args
 	rm -f modified_tags.args
@@ -254,6 +256,7 @@ if [ -n "$main_ci" ]; then
 	# cleanup
 	rm -f test_file.txt
 	touch test_file_boards.txt test_file_tests.txt test_file_archs.txt
+	touch test_file_tags.txt
 
 	# In a pull-request see if we have changed any tests or board definitions
 	if [ -n "${pull_request_nr}" -o -n "${local_run}"  ]; then
@@ -279,11 +282,14 @@ if [ -n "$main_ci" ]; then
 	tail -n +2 test_file_archs.txt > test_file_archs_in.txt
 	tail -n +2 test_file_tests.txt > test_file_tests_in.txt
 	tail -n +2 test_file_boards.txt > test_file_boards_in.txt
-	cat test_file_main.txt test_file_archs_in.txt test_file_tests_in.txt test_file_boards_in.txt > test_file.txt
+	tail -n +2 test_file_tags.txt > test_file_tags_in.txt
+	cat test_file_main.txt test_file_archs_in.txt test_file_tests_in.txt \
+		test_file_boards_in.txt test_file_tags_in.txt > test_file.txt
 
 	wc -l test_file_archs_in.txt
 	wc -l test_file_tests_in.txt 
 	wc -l test_file_boards_in.txt
+	wc -l test_file_tags_in.txt
 
 	cat test_file.txt | grep -v skipped | wc -l
 	cat test_file.txt | grep -v skipped
