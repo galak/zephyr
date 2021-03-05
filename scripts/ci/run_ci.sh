@@ -271,7 +271,8 @@ if [ -n "$main_ci" ]; then
 	tail -n +2 test_file_boards.txt > test_file_boards_in.txt
 	cat test_file_main.txt test_file_archs_in.txt test_file_tests_in.txt test_file_boards_in.txt > test_file.txt
 
-	cat test_file.txt
+	cat test_file.txt | grep -v skipped | wc -l
+	cat test_file.txt | grep -v skipped
 
 	echo "+++ run twister"
 
