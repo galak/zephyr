@@ -50,6 +50,11 @@ kernel:
     files-exclude:
         - include/ptp_clock.h
 
+cmsis_dsp:
+    files:
+        - modules/Kconfig.cmsis_dsp
+        - west.yml
+
 ptp:
     files:
         - include/ptp_clock.h
