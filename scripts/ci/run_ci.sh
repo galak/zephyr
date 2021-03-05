@@ -108,20 +108,26 @@ function get_tests_to_run() {
 
 	twister_exclude_tag_opt=""
 	if [ -s modified_tags.args ]; then
+		cat modified_tags.args
 		twister_exclude_tag_opt="+modified_tags.args"
 	fi
 
+	echo "EXCLUDE TAG OPT [${twister_exclude_tag_opt}]"
+
 	if [ -s modified_boards.args ]; then
+		cat modified_boards.args
 		${twister} ${twister_options} ${twister_exclude_tag_opt} \
 			+modified_boards.args \
 			--save-tests test_file_boards.txt || exit 1
 	fi
 	if [ -s modified_tests.args ]; then
+		cat modified_tests.args
 		${twister} ${twister_options} ${twister_exclude_tag_opt} \
 			+modified_tests.args \
 			--save-tests test_file_tests.txt || exit 1
 	fi
 	if [ -s modified_archs.args ]; then
+		cat modified_archs.args
 		${twister} ${twister_options} ${twister_exclude_tag_opt} \
 			+modified_archs.args \
 			--save-tests test_file_archs.txt || exit 1
@@ -248,6 +254,8 @@ if [ -n "$main_ci" ]; then
 		get_tests_to_run
 	fi
 
+	echo "SC = [${SC}]"
+
 	if [ "$SC" == "full" ]; then
 		# Save list of tests to be run
 		${twister} ${twister_options} --save-tests test_file_main.txt || exit 1
@@ -262,6 +270,8 @@ if [ -n "$main_ci" ]; then
 	tail -n +2 test_file_tests.txt > test_file_tests_in.txt
 	tail -n +2 test_file_boards.txt > test_file_boards_in.txt
 	cat test_file_main.txt test_file_archs_in.txt test_file_tests_in.txt test_file_boards_in.txt > test_file.txt
+
+	cat test_file.txt
 
 	echo "+++ run twister"
 
