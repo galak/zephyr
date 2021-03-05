@@ -119,18 +119,24 @@ function get_tests_to_run() {
 		${twister} ${twister_options} ${twister_exclude_tag_opt} \
 			+modified_boards.args \
 			--save-tests test_file_boards.txt || exit 1
+		modified=1
 	fi
 	if [ -s modified_tests.args ]; then
 		cat modified_tests.args
 		${twister} ${twister_options} ${twister_exclude_tag_opt} \
 			+modified_tests.args \
 			--save-tests test_file_tests.txt || exit 1
+		modified=1
 	fi
 	if [ -s modified_archs.args ]; then
 		cat modified_archs.args
 		${twister} ${twister_options} ${twister_exclude_tag_opt} \
 			+modified_archs.args \
 			--save-tests test_file_archs.txt || exit 1
+		modified=1
+	fi
+	if [ -z "$modified" -a -n "$twister_exclude_tag_opt" ]; then
+		echo "NOT MODIFIED - WITH TAGS"
 	fi
 	rm -f modified_tests.args modified_boards.args modified_archs.args
 	rm -f modified_tags.args
