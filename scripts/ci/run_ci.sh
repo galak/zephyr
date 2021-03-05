@@ -256,6 +256,8 @@ if [ -n "$main_ci" ]; then
 
 	echo "SC = [${SC}]"
 
+	SC="notfull"
+
 	if [ "$SC" == "full" ]; then
 		# Save list of tests to be run
 		${twister} ${twister_options} --save-tests test_file_main.txt || exit 1
