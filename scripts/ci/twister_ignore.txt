@@ -47,7 +47,10 @@ doc/*
 # if we change this file or associated script, it should not trigger a full
 # twister.
 scripts/ci/twister_ignore.txt
+scripts/ci/tags.yaml
 scripts/ci/what_changed.py
+scripts/ci/get_twister_opt.py
+scripts/ci/run_ci.sh
 scripts/ci/version_mgr.py
 scripts/requirements*
 scripts/checkpatch/*
