@@ -112,8 +112,8 @@ static void board_setup(void)
 	const char *pmx_name = DT_LABEL(DT_NODELABEL(porta));
 	const struct device *pmx = device_get_binding(pmx_name);
 
-	pinmux_pin_set(pmx, PIN_OUT, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(pmx, PIN_IN, PORT_PCR_MUX(kPORT_MuxAsGpio));
+	pinmux_pin_set(pmx, PIN_OUT, kPORT_MuxAsGpio);
+	pinmux_pin_set(pmx, PIN_IN, kPORT_MuxAsGpio);
 #elif defined(CONFIG_GPIO_EMUL)
 	extern struct gpio_callback gpio_emul_callback;
 	const struct device *dev = device_get_binding(DEV_NAME);

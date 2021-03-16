@@ -25,7 +25,7 @@ static int pinmux_rv32m1_set(const struct device *dev, uint32_t pin,
 	const struct pinmux_rv32m1_config *config = dev->config;
 	PORT_Type *base = config->base;
 
-	base->PCR[pin] = (base->PCR[pin] & ~PORT_PCR_MUX_MASK) | func;
+	base->PCR[pin] = (base->PCR[pin] & ~PORT_PCR_MUX_MASK) | PORT_PCR_MUX(func);
 
 	return 0;
 }
@@ -36,7 +36,7 @@ static int pinmux_rv32m1_get(const struct device *dev, uint32_t pin,
 	const struct pinmux_rv32m1_config *config = dev->config;
 	PORT_Type *base = config->base;
 
-	*func = base->PCR[pin] & ~PORT_PCR_MUX_MASK;
+	*func = (base->PCR[pin] & ~PORT_PCR_MUX_MASK) >> PORT_PCR_MUX_SHIFT;
 
 	return 0;
 }

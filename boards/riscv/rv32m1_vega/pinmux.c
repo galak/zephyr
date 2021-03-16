@@ -47,75 +47,75 @@ static int rv32m1_vega_pinmux_init(const struct device *dev)
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpuart0), okay) && CONFIG_SERIAL
 	/* LPUART0 RX, TX */
-	pinmux_pin_set(portc, 7, PORT_PCR_MUX(kPORT_MuxAlt3));
-	pinmux_pin_set(portc, 8, PORT_PCR_MUX(kPORT_MuxAlt3));
+	pinmux_pin_set(portc, 7, kPORT_MuxAlt3);
+	pinmux_pin_set(portc, 8, kPORT_MuxAlt3);
 #endif
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpuart1), okay) && CONFIG_SERIAL
 	/* LPUART1 RX, TX */
-	pinmux_pin_set(portc, 29, PORT_PCR_MUX(kPORT_MuxAlt2));
-	pinmux_pin_set(portc, 30, PORT_PCR_MUX(kPORT_MuxAlt2));
+	pinmux_pin_set(portc, 29, kPORT_MuxAlt2);
+	pinmux_pin_set(portc, 30, kPORT_MuxAlt2);
 #endif
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpi2c0), okay) && CONFIG_I2C
 	/* LPI2C0 SCL, SDA - Arduino header */
-	pinmux_pin_set(portc, 10, PORT_PCR_MUX(kPORT_MuxAlt4));
-	pinmux_pin_set(portc, 9, PORT_PCR_MUX(kPORT_MuxAlt4));
+	pinmux_pin_set(portc, 10, kPORT_MuxAlt4);
+	pinmux_pin_set(portc, 9, kPORT_MuxAlt4);
 #endif
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpi2c3), okay) && CONFIG_I2C
 	/* LPI2C3 SCL, SDA - FXOS8700 */
-	pinmux_pin_set(porte, 30, PORT_PCR_MUX(kPORT_MuxAlt3));
-	pinmux_pin_set(porte, 29, PORT_PCR_MUX(kPORT_MuxAlt3));
+	pinmux_pin_set(porte, 30, kPORT_MuxAlt3);
+	pinmux_pin_set(porte, 29, kPORT_MuxAlt3);
 #endif
 
 	/* FXOS8700 INT1, INT2, RST */
-	pinmux_pin_set(porte, 1, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(porte, 22, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(porte, 27, PORT_PCR_MUX(kPORT_MuxAsGpio));
+	pinmux_pin_set(porte, 1, kPORT_MuxAsGpio);
+	pinmux_pin_set(porte, 22, kPORT_MuxAsGpio);
+	pinmux_pin_set(porte, 27, kPORT_MuxAsGpio);
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpspi0), okay) && CONFIG_SPI
 	/* LPSPI0 SCK, SOUT, PCS2, SIN */
-	pinmux_pin_set(portb,  4, PORT_PCR_MUX(kPORT_MuxAlt2));
-	pinmux_pin_set(portb,  5, PORT_PCR_MUX(kPORT_MuxAlt2));
-	pinmux_pin_set(portb,  6, PORT_PCR_MUX(kPORT_MuxAlt2));
-	pinmux_pin_set(portb,  7, PORT_PCR_MUX(kPORT_MuxAlt2));
+	pinmux_pin_set(portb,  4, kPORT_MuxAlt2);
+	pinmux_pin_set(portb,  5, kPORT_MuxAlt2);
+	pinmux_pin_set(portb,  6, kPORT_MuxAlt2);
+	pinmux_pin_set(portb,  7, kPORT_MuxAlt2);
 #endif
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpspi1), okay) && CONFIG_SPI
 	/* LPSPI1 SCK, SIN, SOUT, CS */
-	pinmux_pin_set(portb, 20, PORT_PCR_MUX(kPORT_MuxAlt2));
-	pinmux_pin_set(portb, 21, PORT_PCR_MUX(kPORT_MuxAlt2));
-	pinmux_pin_set(portb, 24, PORT_PCR_MUX(kPORT_MuxAlt2));
-	pinmux_pin_set(portb, 22, PORT_PCR_MUX(kPORT_MuxAlt2));
+	pinmux_pin_set(portb, 20, kPORT_MuxAlt2);
+	pinmux_pin_set(portb, 21, kPORT_MuxAlt2);
+	pinmux_pin_set(portb, 24, kPORT_MuxAlt2);
+	pinmux_pin_set(portb, 22, kPORT_MuxAlt2);
 #endif
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(tpm2), okay) && CONFIG_PWM
 	/* RGB LEDs as PWM */
-	pinmux_pin_set(porta, 22, PORT_PCR_MUX(kPORT_MuxAlt6));
-	pinmux_pin_set(porta, 23, PORT_PCR_MUX(kPORT_MuxAlt6));
-	pinmux_pin_set(porta, 24, PORT_PCR_MUX(kPORT_MuxAlt6));
+	pinmux_pin_set(porta, 22, kPORT_MuxAlt6);
+	pinmux_pin_set(porta, 23, kPORT_MuxAlt6);
+	pinmux_pin_set(porta, 24, kPORT_MuxAlt6);
 #else
 	/* RGB LEDs as GPIO */
-	pinmux_pin_set(porta, 22, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(porta, 23, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(porta, 24, PORT_PCR_MUX(kPORT_MuxAsGpio));
+	pinmux_pin_set(porta, 22, kPORT_MuxAsGpio);
+	pinmux_pin_set(porta, 23, kPORT_MuxAsGpio);
+	pinmux_pin_set(porta, 24, kPORT_MuxAsGpio);
 #endif
 
 #ifdef CONFIG_BT_CTLR_DEBUG_PINS
 
-	pinmux_pin_set(portb, 29, PORT_PCR_MUX(kPORT_MuxAsGpio));
+	pinmux_pin_set(portb, 29, kPORT_MuxAsGpio);
 
-	pinmux_pin_set(portc, 28, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(portc, 29, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(portc, 30, PORT_PCR_MUX(kPORT_MuxAsGpio));
+	pinmux_pin_set(portc, 28, kPORT_MuxAsGpio);
+	pinmux_pin_set(portc, 29, kPORT_MuxAsGpio);
+	pinmux_pin_set(portc, 30, kPORT_MuxAsGpio);
 
-	pinmux_pin_set(portd, 0, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(portd, 1, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(portd, 2, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(portd, 3, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(portd, 4, PORT_PCR_MUX(kPORT_MuxAsGpio));
-	pinmux_pin_set(portd, 5, PORT_PCR_MUX(kPORT_MuxAsGpio));
+	pinmux_pin_set(portd, 0, kPORT_MuxAsGpio);
+	pinmux_pin_set(portd, 1, kPORT_MuxAsGpio);
+	pinmux_pin_set(portd, 2, kPORT_MuxAsGpio);
+	pinmux_pin_set(portd, 3, kPORT_MuxAsGpio);
+	pinmux_pin_set(portd, 4, kPORT_MuxAsGpio);
+	pinmux_pin_set(portd, 5, kPORT_MuxAsGpio);
 
 	const struct device *gpio_dev =
 		device_get_binding(DT_LABEL(DT_NODELABEL(gpiob)));
