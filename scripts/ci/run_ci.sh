@@ -94,8 +94,10 @@ function build_test_file() {
 
 	twister_exclude_tag_opt=""
 	if [ -s modified_tags.args ]; then
+		cat modified_tags.args
 		twister_exclude_tag_opt="+modified_tags.args"
 	fi
+	echo "EXCLUDE TAG OPT [${twister_exclude_tag_opt}]"
 
 	# In a pull-request see if we have changed any tests or board definitions
 	if [ -n "${pull_request_nr}" -o -n "${local_run}"  ]; then
