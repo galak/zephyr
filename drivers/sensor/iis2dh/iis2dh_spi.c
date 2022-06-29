@@ -21,13 +21,9 @@
 
 LOG_MODULE_DECLARE(IIS2DH, CONFIG_SENSOR_LOG_LEVEL);
 
-static struct spi_config iis2dh_spi_conf = {
-	.frequency = DT_INST_PROP(0, spi_max_frequency),
-	.operation = (SPI_OP_MODE_MASTER | SPI_MODE_CPOL |
-		      SPI_MODE_CPHA | SPI_WORD_SET(8)),
-	.slave     = DT_INST_REG_ADDR(0),
-	.cs        = NULL,
-};
+static struct spi_config iis2dh_spi_conf = SPI_CONFIG_DT_INST(0,
+	(SPI_OP_MODE_MASTER | SPI_MODE_CPOL | SPI_MODE_CPHA | SPI_WORD_SET(8)),
+	0);
 
 static int iis2dh_spi_read(struct iis2dh_data *ctx, uint8_t reg,
 			   uint8_t *data, uint16_t len)
@@ -105,22 +101,13 @@ int iis2dh_spi_init(const struct device *dev)
 	data->ctx->handle = data;
 
 #if DT_INST_SPI_DEV_HAS_CS_GPIOS(0)
-	/* handle SPI CS thru GPIO if it is the case */
-	data->cs_ctrl.gpio_dev = device_get_binding(
-		DT_INST_SPI_DEV_CS_GPIOS_LABEL(0));
-	if (!data->cs_ctrl.gpio_dev) {
+	struct spi_config *spi_cfg = &iis2dh_spi_conf;
+	const struct spi_cs_control *cs_ctrl = spi_cfg->cs;
+
+	if (!device_is_ready(cs_ctrl->gpio.port)) {
 		LOG_ERR("Unable to get GPIO SPI CS device");
 		return -ENODEV;
 	}
-
-	data->cs_ctrl.gpio_pin = DT_INST_SPI_DEV_CS_GPIOS_PIN(0);
-	data->cs_ctrl.delay = 0U;
-
-	iis2dh_spi_conf.cs = &data->cs_ctrl;
-
-	LOG_DBG("SPI GPIO CS configured on %s:%u",
-		    DT_INST_SPI_DEV_CS_GPIOS_LABEL(0),
-		    DT_INST_SPI_DEV_CS_GPIOS_PIN(0));
 #endif
 
 	return 0;

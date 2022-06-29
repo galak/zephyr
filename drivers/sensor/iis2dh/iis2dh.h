@@ -72,9 +72,6 @@ struct iis2dh_data {
 	struct k_work work;
 #endif /* CONFIG_IIS2DH_TRIGGER_GLOBAL_THREAD */
 #endif /* CONFIG_IIS2DH_TRIGGER */
-#if DT_INST_SPI_DEV_HAS_CS_GPIOS(0)
-	struct spi_cs_control cs_ctrl;
-#endif
 };
 
 int iis2dh_i2c_init(const struct device *dev);
