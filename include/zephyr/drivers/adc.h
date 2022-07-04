@@ -278,11 +278,18 @@ struct adc_dt_spec {
 
 /** @cond INTERNAL_HIDDEN */
 
+#define ADC_DT_NODE_REG_MATCH(node, reg) \
+	IF_ENABLED(Z_IS_EQ(DT_REG_ADDR(node), reg), (node))
+
+#define ADC_DT_NODE_BY_REG(node, reg) \
+	ADC_CHANNEL_CFG_FROM_DT_NODE(ADC_DT_NODE_REG_MATCH(node, reg))
+
+#define FOOBAR(x, y) DT_FOREACH_CHILD_VARGS(x, ADC_DT_NODE_BY_REG, y)
+
 #define ADC_DT_SPEC_STRUCT(ctlr, input) { \
 		.dev = DEVICE_DT_GET(ctlr), \
 		.channel_id = input, \
-		ADC_CHANNEL_CFG_FROM_DT_NODE( \
-			DT_CHILD(ctlr, UTIL_CAT(channel_, input))) \
+		FOOBAR(ctlr, input) \
 	}
 
 #define ADC_CHANNEL_CFG_FROM_DT_NODE(node_id) \
