@@ -37,11 +37,9 @@ enum emul_bus_type {
 
 /**
  * Structure uniquely identifying a device to be emulated
- *
- * Currently this uses the device node label, but that will go away by 2.5.
  */
 struct emul_link_for_bus {
-	const char *label;
+	const char *name;
 };
 
 /** List of emulators attached to a bus */
@@ -69,7 +67,7 @@ struct emul {
 	/** function used to initialise the emulator state */
 	emul_init_t init;
 	/** handle to the device for which this provides low-level emulation */
-	const char *dev_label;
+	const char *dev_name;
 	/** Emulator-specific configuration data */
 	const void *cfg;
 	/** Emulator-specific data */
@@ -127,7 +125,7 @@ extern const struct emul __emul_list_end[];
 	static struct emul EMUL_REG_NAME(node_id) __attribute__((__section__(".emulators")))       \
 	__used = {                                                                                 \
 		.init = (init_ptr),                                                                \
-		.dev_label = DT_LABEL(node_id),                                                    \
+		.dev_name = DEVICE_DT_NAME(node_id),                                               \
 		.cfg = (cfg_ptr),                                                                  \
 		.data = (data_ptr),                                                                \
 		.bus_type = Z_EMUL_BUS(node_id, EMUL_BUS_TYPE_I2C, EMUL_BUS_TYPE_ESPI,             \
