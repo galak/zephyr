@@ -3,6 +3,8 @@
 
 config KSCAN_SDL
 	bool "SDL event filter for touch panel emulation"
+	default y
+	depends on DT_HAS_SDL_KSCAN_ENABLED
 	depends on HAS_SDL
 	help
 	  Enable driver for the SDL mouse event filter.

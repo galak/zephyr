@@ -181,6 +181,10 @@
 		width = <320>;
 	};
 
+	sdl_kscan: sdl_kscan {
+		compatible = "zephyr,sdl-kscan";
+	};
+
 	can_loopback0: can_loopback0 {
 		status = "disabled";
 		compatible = "zephyr,can-loopback";
