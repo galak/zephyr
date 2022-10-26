@@ -39,7 +39,7 @@ static ALWAYS_INLINE uint32_t arch_proc_id(void)
 
 static ALWAYS_INLINE unsigned int arch_num_cpus(void)
 {
-	return CONFIG_MP_MAX_NUM_CPUS;
+	return MIN(CONFIG_MP_MAX_NUM_CPUS, 2);
 }
 
 #endif /* !_ASMLANGUAGE */
