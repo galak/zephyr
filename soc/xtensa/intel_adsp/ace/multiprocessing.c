@@ -6,6 +6,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/check.h>
+#include <zephyr/arch/cpu.h>
 
 #include <soc.h>
 #include <adsp_boot.h>
@@ -40,8 +41,16 @@ static void ipc_isr(void *arg)
 #endif
 }
 
+#define DfIDCCP 0x2020
+
+unsigned int soc_num_cpus;
+
 void soc_mp_init(void)
 {
+	/* Need to set soc_num_cpus early to arch_num_cpus() works properly */
+	soc_num_cpus = (sys_read32(DfIDCCP) >> 24) & 0xf;
+	soc_num_cpus = MIN(CONFIG_MP_MAX_NUM_CPUS, soc_num_cpus);
+
 	IRQ_CONNECT(ACE_IRQ_TO_ZEPHYR(ACE_INTL_IDCA), 0, ipc_isr, 0, 0);
 
 	irq_enable(ACE_IRQ_TO_ZEPHYR(ACE_INTL_IDCA));
