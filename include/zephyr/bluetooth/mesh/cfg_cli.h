@@ -771,7 +771,7 @@ __deprecated int bt_mesh_cfg_mod_app_get_vnd(uint16_t net_idx, uint16_t addr, ui
 #define BT_MESH_PUB_PERIOD_10MIN(steps) (((steps) & BIT_MASK(6)) | (3 << 6))
 
 /** Model publication configuration parameters. */
-__deprecated struct bt_mesh_cfg_mod_pub {
+struct __deprecated bt_mesh_cfg_mod_pub {
 	/** Publication destination address. */
 	uint16_t addr;
 	/** Virtual address UUID, or NULL if this is not a virtual address. */
@@ -1207,7 +1207,7 @@ __deprecated int bt_mesh_cfg_mod_sub_get_vnd(uint16_t net_idx, uint16_t addr, ui
 					     uint16_t *subs, size_t *sub_cnt);
 
 /** Heartbeat subscription configuration parameters. */
-__deprecated struct bt_mesh_cfg_hb_sub {
+struct __deprecated bt_mesh_cfg_hb_sub {
 	/** Source address to receive Heartbeat messages from. */
 	uint16_t src;
 	/** Destination address to receive Heartbeat messages on. */
@@ -1316,7 +1316,7 @@ __deprecated int bt_mesh_cfg_hb_sub_set(uint16_t net_idx, uint16_t addr,
 __deprecated int bt_mesh_cfg_hb_sub_get(uint16_t net_idx, uint16_t addr,
 					struct bt_mesh_cfg_hb_sub *sub, uint8_t *status);
 /** Heartbeat publication configuration parameters. */
-__deprecated struct bt_mesh_cfg_hb_pub {
+struct __deprecated bt_mesh_cfg_hb_pub {
 	/** Heartbeat destination address. */
 	uint16_t dst;
 	/**
