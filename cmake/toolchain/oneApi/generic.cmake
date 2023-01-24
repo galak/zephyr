@@ -8,9 +8,19 @@ endif()
 
 # the default oneApi installation path is related to os
 string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} system)
+
+# default ONEAPI_TOOLCHAIN_VERSION if not set to "latest"
+if(NOT DEFINED ENV{ONEAPI_TOOLCHAIN_VERSION})
+  set(ONEAPI_TOOLCHAIN_VERSION "latest")
+else()
+  set(ONEAPI_TOOLCHAIN_VERSION $ENV{ONEAPI_TOOLCHAIN_VERSION})
+endif()
+
+message("KVER IS ${ONEAPI_TOOLCHAIN_VERSION}")
+
 if(ONEAPI_TOOLCHAIN_PATH)
-  set(TOOLCHAIN_HOME ${ONEAPI_TOOLCHAIN_PATH}/compiler/latest/${system}/bin/)
-  set(ONEAPI_LLVM_BIN_PATH ${ONEAPI_TOOLCHAIN_PATH}/compiler/latest/${system}/bin-llvm)
+  set(TOOLCHAIN_HOME ${ONEAPI_TOOLCHAIN_PATH}/compiler/${ONEAPI_TOOLCHAIN_VERSION}/${system}/bin/)
+  set(ONEAPI_LLVM_BIN_PATH ${ONEAPI_TOOLCHAIN_PATH}/compiler/${ONEAPI_TOOLCHAIN_VERSION}/${system}/bin-llvm)
 endif()
 
 set(ONEAPI_TOOLCHAIN_PATH ${ONEAPI_TOOLCHAIN_PATH} CACHE PATH "oneApi install directory")
