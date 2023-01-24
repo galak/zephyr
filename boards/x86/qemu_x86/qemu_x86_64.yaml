@@ -5,6 +5,7 @@ arch: x86
 toolchain:
   - zephyr
   - xtools
+  - oneApi
 simulation: qemu
 supported:
   - can
