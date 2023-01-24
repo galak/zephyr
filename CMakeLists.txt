@@ -404,6 +404,7 @@ zephyr_compile_options(${COMPILER_OPT_AS_LIST})
 
 # TODO: Include arch compiler options at this point.
 
+message("MY CMAKE_C_COMPILER_ID is ${CMAKE_C_COMPILER_ID} ")
 if(NOT CMAKE_C_COMPILER_ID STREQUAL "Clang" AND
    NOT CMAKE_C_COMPILER_ID STREQUAL "IntelLLVM")
   # GCC assumed

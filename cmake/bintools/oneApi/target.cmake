@@ -27,6 +27,14 @@ find_program(CMAKE_OBJCOPY llvm-objcopy ${find_program_binutils_args})
 find_program(CMAKE_READELF readelf      ${find_program_binutils_args})
 find_program(CMAKE_STRIP   llvm-strip   ${find_program_binutils_args})
 
+message("AR ${CMAKE_AR}")
+message("NM ${CMAKE_NM}")
+message("OBJDUMP ${CMAKE_OBJDUMP}")
+message("RANLIB ${CMAKE_RANLIB}")
+message("OBJCOPY ${CMAKE_OBJCOPY}")
+message("OBJCOPY ${CMAKE_OBJCOPY}")
+message("STRIP ${CMAKE_STRIP}")
+
 find_program(CMAKE_GDB     gdb-oneapi)
 
 # Use the gnu binutil abstraction
