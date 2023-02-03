@@ -92,6 +92,8 @@ ZTEST(interrupt_feature, test_isr_regular)
 
 	irq_unlock(key);
 
+	k_sleep(K_USEC(10));
+
 	/* interrupt serve after irq unlocked */
 	zassert_true(reg_int_executed[0] == 2 &&
 			reg_int_executed[1] == 2,
