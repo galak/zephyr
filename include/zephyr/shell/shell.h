@@ -380,8 +380,7 @@ struct shell_static_entry {
  */
 #define SHELL_DYNAMIC_CMD_CREATE(name, get)					\
 	static const union shell_cmd_entry name					\
-	__attribute__ ((section("."						\
-			STRINGIFY(UTIL_CAT(shell_dynamic_subcmd_, syntax)))))	\
+	__in_section(_shell_dynamic_subcmds, static, syntax)			\
 	__attribute__((used)) = {						\
 		.dynamic_get = get						\
 	}

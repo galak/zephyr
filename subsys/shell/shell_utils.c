@@ -12,8 +12,8 @@
 extern const union shell_cmd_entry _shell_root_cmds_list_start[];
 extern const union shell_cmd_entry _shell_root_cmds_list_end[];
 
-extern const union shell_cmd_entry __shell_dynamic_subcmds_start[];
-extern const union shell_cmd_entry __shell_dynamic_subcmds_end[];
+extern const union shell_cmd_entry _shell_dynamic_subcmds_list_start[];
+extern const union shell_cmd_entry _shell_dynamic_subcmds_list_end[];
 
 extern const union shell_cmd_entry __shell_subcmds_start[];
 extern const union shell_cmd_entry __shell_subcmds_end[];
@@ -39,8 +39,8 @@ static inline const union shell_cmd_entry *shell_root_cmd_get(uint32_t id)
  */
 static inline bool is_dynamic_cmd(const union shell_cmd_entry *entry)
 {
-	return (entry >= __shell_dynamic_subcmds_start) &&
-		(entry < __shell_dynamic_subcmds_end);
+	return (entry >= _shell_dynamic_subcmds_list_start) &&
+		(entry < _shell_dynamic_subcmds_list_end);
 }
 
 /* Determine if entry is a section command by checking if address is within

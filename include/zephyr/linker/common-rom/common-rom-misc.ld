@@ -47,12 +47,7 @@
 		__shell_subcmds_end = .;
 	} GROUP_ROM_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
 
-	SECTION_DATA_PROLOGUE(shell_dynamic_subcmds_sections,,)
-	{
-		__shell_dynamic_subcmds_start = .;
-		KEEP(*(SORT(.shell_dynamic_subcmd_*)));
-		__shell_dynamic_subcmds_end = .;
-	} GROUP_ROM_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
+	ITERABLE_SECTION_ROM(shell_dynamic_subcmds, 4)
 
 	SECTION_DATA_PROLOGUE(font_entry_sections,,)
 	{
