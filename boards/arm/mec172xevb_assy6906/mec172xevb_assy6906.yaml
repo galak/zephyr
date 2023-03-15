@@ -11,6 +11,7 @@ arch: arm
 toolchain:
   - zephyr
   - gnuarmemb
+  - armclang
 ram: 64
 flash: 352
 supported:
