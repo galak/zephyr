@@ -294,6 +294,7 @@ struct shell_static_entry {
 #define Z_SHELL_UNDERSCORE(x) _##x
 #define Z_SHELL_SUBCMD_NAME(...) \
 	UTIL_CAT(shell_subcmd, MACRO_MAP_CAT(Z_SHELL_UNDERSCORE, __VA_ARGS__))
+#define FOOBAR(...) MACRO_MAP_CAT(Z_SHELL_UNDERSCORE, __VA_ARGS__)
 
 /** @brief Create set of subcommands.
  *
@@ -308,9 +309,8 @@ struct shell_static_entry {
  */
 #define SHELL_SUBCMD_SET_CREATE(_name, _parent)					\
 	static const struct shell_static_entry _name				\
-	__attribute__ ((section("."						\
-			STRINGIFY(Z_SHELL_SUBCMD_NAME(NUM_VA_ARGS_LESS_1 _parent, \
-					__DEBRACKET _parent)))))		\
+	__in_section(shell_subcmd, static, FOOBAR(NUM_VA_ARGS_LESS_1 _parent, \
+					__DEBRACKET _parent))		\
 	__attribute__((used))
 
 /** @brief Conditionally add command to the set of subcommands.
@@ -337,9 +337,8 @@ struct shell_static_entry {
 	COND_CODE_1(_flag, \
 		(static const struct shell_static_entry \
 		   Z_SHELL_SUBCMD_NAME(__DEBRACKET _parent, _syntax)\
-		   __attribute__ ((section("."						\
-			STRINGIFY(Z_SHELL_SUBCMD_NAME(NUM_VA_ARGS_LESS_1 _parent, \
-				  __DEBRACKET _parent, _syntax)))))	\
+		   __in_section(shell_subcmd, static, FOOBAR(NUM_VA_ARGS_LESS_1 _parent, \
+                                  __DEBRACKET _parent, _syntax)) \
 		   __attribute__((used)) = \
 			SHELL_EXPR_CMD_ARG(1, _syntax, _subcmd, _help, \
 					   _handler, _mand, _opt)\

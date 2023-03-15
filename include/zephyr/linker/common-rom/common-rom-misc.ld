@@ -40,12 +40,7 @@
 
 	ITERABLE_SECTION_ROM(shell_root_cmds, 4)
 
-	SECTION_DATA_PROLOGUE(shell_subcmds_sections,,)
-	{
-		__shell_subcmds_start = .;
-		KEEP(*(SORT(.shell_subcmd_*)));
-		__shell_subcmds_end = .;
-	} GROUP_ROM_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
+	ITERABLE_SECTION_ROM(shell_subcmds, 4)
 
 	ITERABLE_SECTION_ROM(shell_dynamic_subcmds, 4)
 

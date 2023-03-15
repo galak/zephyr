@@ -15,8 +15,8 @@ extern const union shell_cmd_entry _shell_root_cmds_list_end[];
 extern const union shell_cmd_entry _shell_dynamic_subcmds_list_start[];
 extern const union shell_cmd_entry _shell_dynamic_subcmds_list_end[];
 
-extern const union shell_cmd_entry __shell_subcmds_start[];
-extern const union shell_cmd_entry __shell_subcmds_end[];
+extern const union shell_cmd_entry _shell_subcmds_list_start[];
+extern const union shell_cmd_entry _shell_subcmds_list_end[];
 
 /* Macro creates empty entry at the bottom of the memory section with subcommands
  * it is used to detect end of subcommand set that is located before this marker.
@@ -48,8 +48,8 @@ static inline bool is_dynamic_cmd(const union shell_cmd_entry *entry)
  */
 static inline bool is_section_cmd(const union shell_cmd_entry *entry)
 {
-	return (entry >= __shell_subcmds_start) &&
-		(entry < __shell_subcmds_end);
+	return (entry >= _shell_subcmds_list_start) &&
+		(entry < _shell_subcmds_list_end);
 }
 
 /* Calculates relative line number of given position in buffer */
