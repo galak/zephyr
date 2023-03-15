@@ -9,8 +9,8 @@
 #include "shell_utils.h"
 #include "shell_wildcard.h"
 
-extern const union shell_cmd_entry __shell_root_cmds_start[];
-extern const union shell_cmd_entry __shell_root_cmds_end[];
+extern const union shell_cmd_entry _shell_root_cmds_list_start[];
+extern const union shell_cmd_entry _shell_root_cmds_list_end[];
 
 extern const union shell_cmd_entry __shell_dynamic_subcmds_start[];
 extern const union shell_cmd_entry __shell_dynamic_subcmds_end[];
@@ -31,7 +31,7 @@ Z_SHELL_SUBCMD_END_MARKER_CREATE();
 
 static inline const union shell_cmd_entry *shell_root_cmd_get(uint32_t id)
 {
-	return &__shell_root_cmds_start[id];
+	return &_shell_root_cmds_list_start[id];
 }
 
 /* Determine if entry is a dynamic command by checking if address is within
@@ -259,8 +259,8 @@ void z_shell_pattern_remove(char *buff, uint16_t *buff_len, const char *pattern)
 
 static inline uint32_t shell_root_cmd_count(void)
 {
-	return ((uint8_t *)__shell_root_cmds_end -
-			(uint8_t *)__shell_root_cmds_start)/
+	return ((uint8_t *)_shell_root_cmds_list_end -
+			(uint8_t *)_shell_root_cmds_list_start)/
 				sizeof(union shell_cmd_entry);
 }
 
