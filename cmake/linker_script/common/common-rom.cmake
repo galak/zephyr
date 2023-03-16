@@ -67,6 +67,13 @@ if(CONFIG_CPP)
 #		KEEP(*(SORT_BY_NAME(".init_array*")))
 #		__init_array_end = .;
 #	} GROUP_ROM_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
+
+zephyr_linker_section_configure(
+  SECTION ctors
+  INPUT ".ctors*"
+  KEEP SORT NAME
+)
+
 endif()
 
 if(CONFIG_USERSPACE)
