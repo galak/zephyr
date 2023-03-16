@@ -5,7 +5,6 @@
  */
 #include <zephyr/drivers/hwinfo.h>
 #include <zephyr/ztest.h>
-#include <strings.h>
 #include <errno.h>
 
 /*
