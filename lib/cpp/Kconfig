@@ -98,6 +98,14 @@ config ARCMWDT_LIBCPP
 	  Build with ARC MetaWare C++ Standard Library provided by the ARC
 	  MetaWare Development Tools (MWDT) toolchain.
 
+config ARMCLANG_LIBCPP
+	bool "ARC MWDT C++ Library"
+	depends on !NATIVE_APPLICATION
+	depends on ARMCLANG_STD_LIBC
+	help
+	  Build with ARC MetaWare C++ Standard Library provided by the ARC
+	  MetaWare Development Tools (MWDT) toolchain.
+
 config EXTERNAL_LIBCPP
 	bool "External C++ standard library"
 	help
