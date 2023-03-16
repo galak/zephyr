@@ -581,8 +581,10 @@ bool z_log_dropped_pending(void)
 
 void z_log_msg_init(void)
 {
+#ifdef CONFIG_MPSC_PBUF
 	mpsc_pbuf_init(&log_buffer, &mpsc_config);
 	curr_log_buffer = &log_buffer;
+#endif
 }
 
 static struct log_msg *msg_alloc(struct mpsc_pbuf_buffer *buffer, uint32_t wlen)
@@ -609,8 +611,9 @@ static void msg_commit(struct mpsc_pbuf_buffer *buffer, struct log_msg *msg)
 
 		return;
 	}
-
+#ifdef CONFIG_MPSC_PBUF
 	mpsc_pbuf_commit(buffer, &m->buf);
+#endif
 	z_log_msg_post_finalize();
 }
 
@@ -622,7 +625,12 @@ void z_log_msg_commit(struct log_msg *msg)
 
 union log_msg_generic *z_log_msg_local_claim(void)
 {
+#ifdef CONFIG_MPSC_PBUF
 	return (union log_msg_generic *)mpsc_pbuf_claim(&log_buffer);
+#else
+	return NULL;
+#endif
+
 }
 
 /* If there are buffers dedicated for each link, claim the oldest message (lowest timestamp). */
@@ -640,9 +648,11 @@ union log_msg_generic *z_log_msg_claim_oldest(k_timeout_t *backoff)
 
 		STRUCT_SECTION_GET(log_mpsc_pbuf, i, &buf);
 
+#ifdef CONFIG_MPSC_PBUF
 		if (msg_ptr->msg == NULL) {
 			msg_ptr->msg = (union log_msg_generic *)mpsc_pbuf_claim(&buf->buf);
 		}
+#endif
 
 		if (msg_ptr->msg) {
 			log_timestamp_t t = log_msg_get_timestamp(&msg_ptr->msg->log);
@@ -706,7 +716,9 @@ union log_msg_generic *z_log_msg_claim(k_timeout_t *backoff)
 
 static void msg_free(struct mpsc_pbuf_buffer *buffer, const union log_msg_generic *msg)
 {
+#ifdef CONFIG_MPSC_PBUF
 	mpsc_pbuf_free(buffer, &msg->buf);
+#endif
 }
 
 void z_log_msg_free(union log_msg_generic *msg)
@@ -716,7 +728,11 @@ void z_log_msg_free(union log_msg_generic *msg)
 
 static bool msg_pending(struct mpsc_pbuf_buffer *buffer)
 {
+#ifdef CONFIG_MPSC_PBUF
 	return mpsc_pbuf_is_pending(buffer);
+#else
+	return false;
+#endif
 }
 
 bool z_log_msg_pending(void)
