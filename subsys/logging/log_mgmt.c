@@ -194,7 +194,7 @@ static uint16_t link_source_count(uint8_t domain_id)
 uint32_t log_src_cnt_get(uint32_t domain_id)
 {
 	if (z_log_is_local_domain(domain_id)) {
-		return log_const_source_id(__log_const_end);
+		return log_const_source_id(_log_const_list_end);
 	}
 
 	return link_source_count(domain_id);
@@ -240,7 +240,7 @@ const char *log_source_name_get(uint32_t domain_id, uint32_t source_id)
 {
 	if (z_log_is_local_domain(domain_id)) {
 		if (source_id < log_src_cnt_get(domain_id)) {
-			return __log_const_start[source_id].name;
+			return _log_const_list_start[source_id].name;
 		} else {
 			return NULL;
 		}
@@ -306,7 +306,7 @@ uint8_t log_compiled_level_get(uint8_t domain_id, uint32_t source_id)
 {
 	if (z_log_is_local_domain(domain_id)) {
 		if (source_id < log_src_cnt_get(domain_id)) {
-			return __log_const_start[source_id].level;
+			return _log_const_list_start[source_id].level;
 		} else {
 			return LOG_LEVEL_NONE;
 		}

@@ -131,7 +131,7 @@ ZTEST(log_links, test_log_domain_count)
 ZTEST(log_links, test_log_source_count)
 {
 	uint8_t exp_source_cnt[] = {
-		log_const_source_id(__log_const_end),
+		log_const_source_id(_log_const_list_end),
 		/*link1*/
 		domains_a[0]->source_cnt,
 		domains_a[1]->source_cnt,

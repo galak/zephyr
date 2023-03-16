@@ -389,8 +389,8 @@ static inline char z_log_minimal_level_to_char(int level)
  */
 #define LOG_LEVEL_INTERNAL_RAW_STRING LOG_LEVEL_NONE
 
-extern struct log_source_const_data __log_const_start[];
-extern struct log_source_const_data __log_const_end[];
+extern struct log_source_const_data _log_const_list_start[];
+extern struct log_source_const_data _log_const_list_end[];
 
 /** @brief Create message for logging printk-like string or a raw string.
  *
@@ -426,7 +426,7 @@ extern struct log_source_const_data __log_const_end[];
 static inline uint32_t log_const_source_id(
 				const struct log_source_const_data *data)
 {
-	return ((const uint8_t *)data - (uint8_t *)__log_const_start)/
+	return ((const uint8_t *)data - (uint8_t *)_log_const_list_start)/
 			sizeof(struct log_source_const_data);
 }
 

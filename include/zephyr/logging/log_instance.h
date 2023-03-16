@@ -62,7 +62,7 @@ struct log_source_dynamic_data {
  */
 #define Z_LOG_CONST_ITEM_REGISTER(_name, _str_name, _level)		       \
 	const struct log_source_const_data Z_LOG_ITEM_CONST_DATA(_name)	       \
-	__attribute__ ((section("." STRINGIFY(Z_LOG_ITEM_CONST_DATA(_name))))) \
+	__in_section(_log_const, static, _name)					\
 	__attribute__((used)) = {					       \
 		.name = _str_name,					       \
 		.level  = (_level),					       \
