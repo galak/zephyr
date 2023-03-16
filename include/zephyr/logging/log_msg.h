@@ -342,7 +342,7 @@ do { \
 	COND_CODE_0(NUM_VA_ARGS_LESS_1(_, ##__VA_ARGS__), \
 		    (/* No args provided, no variable */), \
 		    (static const char _name[] \
-			__attribute__((__section__(".log_strings"))) = \
+		        __in_section(_log_strings, static, _name) = \
 			GET_ARG_N(1, __VA_ARGS__);))
 
 /** @brief Create variable in the dedicated memory section (if enabled).
