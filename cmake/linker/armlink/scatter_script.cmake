@@ -28,6 +28,8 @@ function(process_region)
     get_property(type       GLOBAL PROPERTY ${section}_TYPE)
 
     get_property(indicies GLOBAL PROPERTY ${section}_SETTINGS_INDICIES)
+    message("SECTION [${section}] [${indicies}]")
+
     list(LENGTH indicies length)
     foreach(idx ${indicies})
       set(steering_postfixes Base Limit)
@@ -52,6 +54,7 @@ function(process_region)
             "Image$$${name_clean}_${idx}$$${postfix}"
           )
           set_property(GLOBAL APPEND PROPERTY SYMBOL_STEERING_FILE
+		  #            "yyRESOLVE ${symbol} AS Image$$${name_clean}_${idx}$$${postfix}\n"
             "RESOLVE ${symbol} AS Image$$${name_clean}_${idx}$$${postfix}\n"
           )
         endforeach()
@@ -108,7 +111,11 @@ function(process_region)
     get_property(name GLOBAL PROPERTY ${group}_NAME)
     string(TOLOWER ${name} name)
 
+    message ("GROUP [${group}] name [${name}]")
+
     get_objects(LIST sections OBJECT ${group} TYPE SECTION)
+
+    message("gSECTION ${sections}")
     list(GET sections 0 section)
     get_property(first_section_name GLOBAL PROPERTY ${section}_NAME_CLEAN)
     list(POP_BACK sections section)
@@ -128,6 +135,7 @@ function(process_region)
 
     set_property(GLOBAL APPEND PROPERTY SYMBOL_STEERING_FILE
         "RESOLVE __${name}_end AS Image$$${last_section_name}$$Limit\n"
+	#        "xxRESOLVE __${name}_end AS Image$$${last_section_name}$$Limit\n"
       )
 
     create_symbol(OBJECT ${REGION_OBJECT} SYMBOL __${name}_size

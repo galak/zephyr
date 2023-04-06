@@ -532,6 +532,21 @@ FUNC_NORETURN void z_cstart(void)
 	z_sys_init_run_level(INIT_LEVEL_PRE_KERNEL_1);
 	z_sys_init_run_level(INIT_LEVEL_PRE_KERNEL_2);
 
+	printk("HERE\n");
+       int *x = (int *)0x2000003c;
+
+       printk("data start %p\n", __data_region_start);
+       printk("data end %p\n", __data_region_end);
+       printk("data size %d\n", __data_region_end - __data_region_start);
+
+       extern char __test_ram2_area_start[];
+       extern char __test_ram2_area_end[];
+
+       printk("__test_ram2_area_start %p\n", __test_ram2_area_start);
+       printk("__test_ram2_area_end %p\n", __test_ram2_area_end);
+
+       printk("x %p 0x%x\n", x, *x);
+
 #ifdef CONFIG_STACK_CANARIES
 	uintptr_t stack_guard;
 

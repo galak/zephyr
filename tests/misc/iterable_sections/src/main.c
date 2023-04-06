@@ -31,6 +31,13 @@ static const STRUCT_SECTION_ITERABLE_ALTERNATE(test_ram2, test_ram, ram5) = {RAM
 ZTEST(iterable_sections, test_ram)
 {
 	int out = 0;
+	int *x = (int *)0x2000003c;
+
+	printk("x %p 0x%x\n", x, *x);
+
+	STRUCT_SECTION_FOREACH_ALTERNATE(test_ram2, test_ram, t) {
+		printk("A test ram 0x%x %p\n", t->i, t);
+	}
 
 	STRUCT_SECTION_FOREACH(test_ram, t) {
 		out = (out << 8) | t->i;
@@ -50,6 +57,7 @@ ZTEST(iterable_sections, test_ram)
 
 	out = 0;
 	STRUCT_SECTION_FOREACH_ALTERNATE(test_ram2, test_ram, t) {
+		printk("A test ram 0x%x %p\n", t->i, t);
 		out = (out << 8) | t->i;
 	}
 
