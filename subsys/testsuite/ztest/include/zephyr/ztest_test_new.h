@@ -50,8 +50,8 @@ struct ztest_expected_result_entry {
 	enum ztest_expected_result expected_result; /**< The expectation */
 };
 
-extern struct ztest_expected_result_entry _ztest_expected_result_entry_list_start[];
-extern struct ztest_expected_result_entry _ztest_expected_result_entry_list_end[];
+STRUCT_SECTION_START_EXTERN(ztest_expected_result_entry);
+STRUCT_SECTION_END_EXTERN(ztest_expected_result_entry);
 
 #define __ZTEST_EXPECT(_suite_name, _test_name, expectation)                                       \
 	static const STRUCT_SECTION_ITERABLE(                                                      \
@@ -104,9 +104,9 @@ struct ztest_unit_test {
 	struct ztest_unit_test_stats *const stats;
 };
 
-extern struct ztest_unit_test _ztest_unit_test_list_start[];
-extern struct ztest_unit_test _ztest_unit_test_list_end[];
-#define ZTEST_TEST_COUNT (_ztest_unit_test_list_end - _ztest_unit_test_list_start)
+STRUCT_SECTION_START_EXTERN(ztest_unit_test);
+STRUCT_SECTION_END_EXTERN(ztest_unit_test);
+#define ZTEST_TEST_COUNT (STRUCT_SECTION_END(ztest_unit_test) - STRUCT_SECTION_START(ztest_unit_test))
 
 /**
  * Stats about a ztest suite
