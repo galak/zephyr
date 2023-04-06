@@ -229,6 +229,9 @@
 	Z_DECL_ALIGN(struct struct_type) name \
 	__in_section(_##out_type, static, name) __used __noasan
 
+#define STRUCT_SECTION_START(struct_type) _CONCAT(_##struct_type, _list_start)
+#define STRUCT_SECTION_END(struct_type) _CONCAT(_##struct_type, _list_end)
+
 /**
  * @brief Iterate over a specified iterable section (alternate).
  *
@@ -240,12 +243,12 @@
  * ITERABLE_SECTION_ROM() or ITERABLE_SECTION_RAM() in the linker script.
  */
 #define STRUCT_SECTION_FOREACH_ALTERNATE(out_type, struct_type, iterator)                          \
-	extern struct struct_type _CONCAT(_##out_type, _list_start)[];                             \
-	extern struct struct_type _CONCAT(_##out_type, _list_end)[];                               \
-	for (struct struct_type *iterator = _CONCAT(_##out_type, _list_start); ({                  \
-		     __ASSERT(iterator <= _CONCAT(_##out_type, _list_end),                         \
+	extern struct struct_type STRUCT_SECTION_START(out_type)[];				   \
+	extern struct struct_type STRUCT_SECTION_END(out_type)[];				   \
+	  for (struct struct_type *iterator = STRUCT_SECTION_START(out_type); ({                   \
+                   __ASSERT(iterator <= STRUCT_SECTION_END(out_type),                              \
 			      "unexpected list end location");                                     \
-		     iterator < _CONCAT(_##out_type, _list_end);                                   \
+		     iterator < STRUCT_SECTION_END(out_type);                                      \
 	     });                                                                                   \
 	     iterator++)
 
