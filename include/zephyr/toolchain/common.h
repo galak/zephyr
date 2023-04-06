@@ -230,7 +230,14 @@
 	__in_section(_##out_type, static, name) __used __noasan
 
 #define STRUCT_SECTION_START(struct_type) _CONCAT(_##struct_type, _list_start)
+
 #define STRUCT_SECTION_END(struct_type) _CONCAT(_##struct_type, _list_end)
+
+#define STRUCT_SECTION_START_EXTERN(struct_type) \
+	extern struct struct_type STRUCT_SECTION_START(struct_type)[]
+
+#define STRUCT_SECTION_END_EXTERN(struct_type) \
+	extern struct struct_type STRUCT_SECTION_END(struct_type)[]
 
 /**
  * @brief Iterate over a specified iterable section (alternate).
@@ -275,9 +282,18 @@
  * @param[out] dst Pointer to location where pointer to element is written.
  */
 #define STRUCT_SECTION_GET(struct_type, i, dst) do { \
-	extern struct struct_type _CONCAT(_##struct_type, _list_start)[]; \
-	*(dst) = &_CONCAT(_##struct_type, _list_start)[i]; \
+	STRUCT_SECTION_START_EXTERN(struct_type); \
+	*(dst) = &STRUCT_SECTION_START(struct_type)[i]; \
 } while (0)
+
+/**
+ * @brief Count elements in a section.
+ *
+ * @param[in]  struct_type Struct type
+ */
+#define STRUCT_SECTION_NUM_ELEM(struct_type) \
+	((uintptr_t)STRUCT_SECTION_END(struct_type) - \
+		  (uintptr_t)STRUCT_SECTION_START(struct_type)) / sizeof(struct struct_type); \
 
 /**
  * @brief Count elements in a section.
@@ -286,10 +302,10 @@
  * @param[out] dst Pointer to location where result is written.
  */
 #define STRUCT_SECTION_COUNT(struct_type, dst) do { \
-	extern struct struct_type _CONCAT(_##struct_type, _list_start)[]; \
-	extern struct struct_type _CONCAT(_##struct_type, _list_end)[]; \
-	*(dst) = ((uintptr_t)_CONCAT(_##struct_type, _list_end) - \
-		  (uintptr_t)_CONCAT(_##struct_type, _list_start)) / sizeof(struct struct_type); \
+	STRUCT_SECTION_START_EXTERN(struct_type); \
+	STRUCT_SECTION_END_EXTERN(struct_type); \
+	*(dst) = ((uintptr_t)STRUCT_SECTION_END(struct_type) - \
+		  (uintptr_t)STRUCT_SECTION_START(struct_type)) / sizeof(struct struct_type); \
 } while (0)
 
 /**
